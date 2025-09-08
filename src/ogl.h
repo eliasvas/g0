@@ -2,6 +2,8 @@
 #define OGL_H__
 #include "math3d.h"
 
+#include <SDL3/SDL_log.h>
+
 // To debug OpenGL error on the fly
 //GLuint e; for (e = glGetError(); e != GL_NO_ERROR; e = glGetError()) { printf("Error: %d\n", e); }
 
@@ -67,7 +69,7 @@ typedef struct {
   // This is kind-of a hack, we use Ogl_Vert_Attrib's and don't fill most fields
   Ogl_Vert_Attrib vattribs[OGL_MAX_ATTRIBS];
 
-  u32 impl_state;
+  u64 impl_state;
 }Ogl_Shader;
 
 // This is complete bullshit, WHY do I need to make a vao at startup on MODERN opengl??????
@@ -192,7 +194,7 @@ INLINE GLuint _gl_create_shader(const char* vertex_source, const char* fragment_
   if (!success) {
     glGetShaderInfoLog(vs, 512, NULL, info_log);
     fprintf(stderr, "Vertex shader compilation failed:\n%s\n", info_log);
-    return (GLuint)0;
+    return 0;
   }
 
   GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
@@ -253,11 +255,11 @@ INLINE b32 ogl_shader_init(Ogl_Shader *shader, const char* vertex_source, const 
   if (shader->impl_state){
     ogl_shader_detect_vert_attribs(shader);
   }
-  return shader->impl_state;
+  return (shader->impl_state != 0);
 }
 
 INLINE Ogl_Shader ogl_shader_make(const char* vertex_source, const char* fragment_source) {
-  Ogl_Shader shader;
+  Ogl_Shader shader = {0};
   assert(ogl_shader_init(&shader, vertex_source, fragment_source)); 
   return shader;
 }
@@ -334,7 +336,7 @@ INLINE void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
 
 INLINE void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, u32 vertex_count, u32 instance_count) {
   ogl_render_bundle_bind(bundle);
-  // first = 0? why?
+  // first = 0? why? we need to enhance the API
   glDrawArraysInstanced(ogl_prim_type_to_gl_type(prim), 0, vertex_count, instance_count);
 }
 

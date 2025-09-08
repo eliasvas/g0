@@ -8,16 +8,17 @@ const u8 font_data[] = {
 };
 */
 
-const char* vs_source = R"(
-#version 430 core
+// For some reason AT LEAST the vetex shader compilation fails on Emscripten
+const char* vs_source = R"(#version 300 es
+precision highp float;
 layout (location = 0) in vec3 v_pos;
 layout (location = 1) in vec3 v_col;
 out vec3 f_color;
-void main() { gl_Position = vec4(v_pos, 1.0); f_color = v_col; }
+void main() { gl_Position = vec4(v_pos, 1.0f); f_color = v_col; }
 )";
 
-const char* fs_source = R"(
-#version 430 core
+const char* fs_source = R"(#version 300 es
+precision highp float;
 out vec4 out_color;
 in vec3 f_color;
 void main() { out_color = vec4(f_color, 1.0f); }
@@ -27,7 +28,7 @@ global_var Ogl_Render_Bundle rbundle = {0};
 
 void game_init(void) {
   ogl_init(); // To create the bullshit empty VAO opengl side, nothing else
-
+  
   f32 vertices[] = {
     -0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
      0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,

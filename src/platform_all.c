@@ -1,70 +1,106 @@
-// clang -O3 $(pkg-config --cflags sdl3 glew) -o main main.c $(pkg-config --libs sdl3 glew) && ./main
-// + sudo dnf install SDL3 SDL3-devel glew glew-devel
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_log.h>
+//#include <SDL3/SDL_opengl.h>
 #include <GL/glew.h>
-#include "ogl.h"
-
-// TODO: support WASM with COMPATIBILTY FLAG and App_X functions
-
 #include <stdio.h>
 #include <assert.h>
+#include "ogl.h"
+#include "helper.h"
+
+// we need this to port to WASM sadly, because WASM programs are event based, no main loops :(
+#define SDL_MAIN_USE_CALLBACKS
+#include <SDL3/SDL_main.h>
+
+// TODO: write a casey style profile to see WHY we are so slow..
 
 void game_init(void);
 void game_update(float dt);
 void game_render(void);
 
-void sdl_err(const char *message) { fprintf(stderr, "%s: %s\n", message, SDL_GetError()); }
-int main(int argc, char *argv[]) {
+typedef struct {
+  SDL_Window *window;
+  SDL_GLContext context;
+
+  f64 dt;
+  u64 frame_start;
+} SDL_State;
+
+SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
-    sdl_err("Could not initialize SDL");
+    SDL_Log("Could not initialize SDL");
+    return SDL_APP_FAILURE;
   }
 
+  // FIXME: Why can't we do ES 3.0 on desktop mode? We should be able to
+#if (ARCH_WASM64 || ARCH_WASM32)
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#else
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-  // TODO(ilias): Maybe here we need to set the COMPATIBILITY profile
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+#endif
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-  SDL_Window *window = SDL_CreateWindow("OpenGL 4.3 Core Profile (Manual Load)", 800, 600, SDL_WINDOW_OPENGL);
-  if (!window) {
-    sdl_err("Could not create window");
+  SDL_State *sdl_state= M_ALLOC(sizeof(SDL_State));
+  M_ZERO_STRUCT(sdl_state);
+  *appstate = sdl_state;
+
+  sdl_state->window = SDL_CreateWindow("g0", 800, 600, SDL_WINDOW_OPENGL);
+  if (!sdl_state->window) {
+    SDL_Log("Could not create window");
   }
 
-  SDL_GLContext context = SDL_GL_CreateContext(window);
-  if (!context) {
-    sdl_err("Could not create OpenGL context");
+  sdl_state->context = SDL_GL_CreateContext(sdl_state->window);
+  if (!sdl_state->context) {
+    SDL_Log("Could not create OpenGL context");
   }
 
-  if (!SDL_GL_MakeCurrent(window, context)) {
-    sdl_err("Could not make OpenGL context current");
+  if (!SDL_GL_MakeCurrent(sdl_state->window, sdl_state->context)) {
+    SDL_Log("Could not make OpenGL context current");
   }
   glewInit();
 
-  printf("OpenGL version: %s\n", glGetString(GL_VERSION));
-  printf("GLSL version: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+  SDL_Log("OpenGL version: %s\n", glGetString(GL_VERSION));
+  SDL_Log("GLSL version: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
   SDL_GL_SetSwapInterval(1);
   game_init();
+  return SDL_APP_CONTINUE;
+}
 
-  bool running = true;
-  SDL_Event event;
-  while (running) {
-    while (SDL_PollEvent(&event) != 0) {
-      if (event.type == SDL_EVENT_QUIT) {
-        running = 0;
-      }
-    }
-
-    game_update(0);
-    game_render();
-
-    SDL_GL_SwapWindow(window);
+SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
+  //SDL_State *sdl_state = (SDL_State*)appstate;
+  if (event->type == SDL_EVENT_QUIT) {
+      return SDL_APP_SUCCESS;
   }
 
-  SDL_GL_DestroyContext(context);
-  SDL_DestroyWindow(window);
-  SDL_Quit();
+  return SDL_APP_CONTINUE;
+}
 
-  return 0;
+SDL_AppResult SDL_AppIterate(void *appstate) {
+  SDL_State *sdl_state = (SDL_State*)appstate;
+  game_update(sdl_state->dt);
+  game_render();
+
+  SDL_GL_SwapWindow(sdl_state->window);
+  u64 frame_end = SDL_GetTicks();
+  sdl_state->dt = (frame_end - sdl_state->frame_start) / 1000.0;
+  printf("fps=%f begin=%f end=%f\n", 1.0/sdl_state->dt, (f32)sdl_state->frame_start, (f32)frame_end);
+  sdl_state->frame_start = SDL_GetTicks();
+
+  return SDL_APP_CONTINUE;
+}
+
+void SDL_AppQuit(void *appstate, SDL_AppResult result) {
+  SDL_State *sdl_state = (SDL_State*)appstate;
+  SDL_Log("Quitting");
+  SDL_GL_DestroyContext(sdl_state->context);
+  SDL_DestroyWindow(sdl_state->window);
+  SDL_Quit();
 }
