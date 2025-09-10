@@ -6,12 +6,11 @@
 #include <assert.h>
 #include "ogl.h"
 #include "helper.h"
+#include "profiler.h"
 
 // we need this to port to WASM sadly, because WASM programs are event based, no main loops :(
 #define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL_main.h>
-
-// TODO: write a casey style profile to see WHY we are so slow..
 
 void game_init(void);
 void game_update(float dt);
@@ -26,6 +25,10 @@ typedef struct {
 } SDL_State;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
+  TIME_FUNC;
+
+  profiler_begin();
+
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     SDL_Log("Could not initialize SDL");
     return SDL_APP_FAILURE;
@@ -71,10 +74,13 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
   SDL_GL_SetSwapInterval(1);
   game_init();
+
   return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
+  TIME_FUNC;
+
   //SDL_State *sdl_state = (SDL_State*)appstate;
   if (event->type == SDL_EVENT_QUIT) {
       return SDL_APP_SUCCESS;
@@ -84,6 +90,8 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 }
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
+  TIME_FUNC;
+
   SDL_State *sdl_state = (SDL_State*)appstate;
   game_update(sdl_state->dt);
   game_render();
@@ -91,16 +99,27 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   SDL_GL_SwapWindow(sdl_state->window);
   u64 frame_end = SDL_GetTicks();
   sdl_state->dt = (frame_end - sdl_state->frame_start) / 1000.0;
-  printf("fps=%f begin=%f end=%f\n", 1.0/sdl_state->dt, (f32)sdl_state->frame_start, (f32)frame_end);
+  //printf("fps=%f begin=%f end=%f\n", 1.0/sdl_state->dt, (f32)sdl_state->frame_start, (f32)frame_end);
   sdl_state->frame_start = SDL_GetTicks();
 
   return SDL_APP_CONTINUE;
 }
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
+  profiler_end_and_print();
+
   SDL_State *sdl_state = (SDL_State*)appstate;
   SDL_Log("Quitting");
   SDL_GL_DestroyContext(sdl_state->context);
   SDL_DestroyWindow(sdl_state->window);
   SDL_Quit();
 }
+
+u64 platform_read_cpu_timer() {
+  return SDL_GetPerformanceCounter();
+}
+
+u64 platform_read_cpu_freq() {
+  return SDL_GetPerformanceFrequency();
+}
+

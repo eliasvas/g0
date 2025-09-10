@@ -1,6 +1,7 @@
 #include "helper.h"
 #include <GL/glew.h>
 #include "ogl.h"
+#include "math3d.h"
 
 /*
 const u8 font_data[] = {
@@ -43,7 +44,7 @@ void game_init(void) {
       [1] = { .location = 1, .type = OGL_DATA_TYPE_VEC3, .offset = sizeof(v3), .avail = true },
     },
     .dyn_state = (Ogl_Dyn_State){
-      .viewport = v4m(0,0,800,600)
+      .viewport = {0,0,800,600},
     }
   };
 }
@@ -52,7 +53,7 @@ void game_init(void) {
 void game_update(float dt) { }
 
 void game_render(void) {
-  ogl_clear(v4m(0.2,0.2,0.25,1.0));
+  ogl_clear((Ogl_Color){0.2,0.2,0.25,1.0});
   ogl_render_bundle_draw(&rbundle, OGL_PRIM_TYPE_TRIANGLE, 3, 1);
 }
 

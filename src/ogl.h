@@ -1,8 +1,5 @@
 #ifndef OGL_H__
 #define OGL_H__
-#include "math3d.h"
-
-#include <SDL3/SDL_log.h>
 
 // To debug OpenGL error on the fly
 //GLuint e; for (e = glGetError(); e != GL_NO_ERROR; e = glGetError()) { printf("Error: %d\n", e); }
@@ -10,11 +7,15 @@
 // TODO: What about Uniform buffers inside Render_Bundles?
 // TODO: Maybe all internal functions should be a separate layer, like create_shader and conversions and stuff
 // TODO: Add a Usage field in vertex buffer create to specify STREAM/DYNAMIC/STATIC
+// TODO: Make this into an actual single header library
 
 // https://www.3dgep.com/forward-plus/
 
 #include <stdio.h>
-#include "helper.h"
+#include <stdint.h>
+
+typedef struct { float x,y,w,h; } Ogl_Rect;
+typedef struct { float r,g,b,a; } Ogl_Color;
 
 typedef enum {
   OGL_PRIM_TYPE_POINT,
@@ -32,11 +33,11 @@ typedef enum {
 }Ogl_Buf_Kind;
 
 typedef struct {
-  s64 bytes_per_elem;
-  s64 count;
+  int64_t bytes_per_elem;
+  int64_t count;
   Ogl_Buf_Kind kind;
 
-  u32 impl_state;
+  uint32_t impl_state;
 } Ogl_Buf;
 
 typedef enum {
@@ -53,14 +54,14 @@ typedef enum {
 
 typedef struct {
   // Description
-  u32 location;
+  uint32_t location;
   Ogl_Data_Type type;
   // Extra
-  u64 offset;
-  u32 stride;
-  b32 instanced;
+  uint64_t offset;
+  uint32_t stride;
+  bool instanced;
   // Extra Extra (could delete.. or do the default initialization macro thingy)
-  b32 avail;
+  bool avail;
 } Ogl_Vert_Attrib;
 
 
@@ -69,27 +70,27 @@ typedef struct {
   // This is kind-of a hack, we use Ogl_Vert_Attrib's and don't fill most fields
   Ogl_Vert_Attrib vattribs[OGL_MAX_ATTRIBS];
 
-  u64 impl_state;
+  uint64_t impl_state;
 }Ogl_Shader;
 
 // This is complete bullshit, WHY do I need to make a vao at startup on MODERN opengl??????
-INLINE void ogl_init() {
+static inline void ogl_init() {
   GLuint vao = 0;
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
 }
 
 // TODO: maybe we should make this too just a render bundle huh?!
-INLINE void ogl_clear(v4 color) {
-  glClearColor(color.x, color.y, color.z, color.w);
+static inline void ogl_clear(Ogl_Color color) {
+  glClearColor(color.r, color.g, color.b, color.a);
   glClear(GL_COLOR_BUFFER_BIT);
 }
  
-INLINE s64 ogl_buf_count_bytes(Ogl_Buf *buf) {
+static inline int64_t ogl_buf_count_bytes(Ogl_Buf *buf) {
   return buf->count * buf->bytes_per_elem;
 }
 
-INLINE GLuint ogl_to_gl_buf_kind(Ogl_Buf_Kind kind) {
+static inline GLuint ogl_to_gl_buf_kind(Ogl_Buf_Kind kind) {
   switch (kind) {
     case OGL_BUF_KIND_VERTEX:  return GL_ARRAY_BUFFER;
     case OGL_BUF_KIND_INDEX:   return GL_ELEMENT_ARRAY_BUFFER;
@@ -99,7 +100,7 @@ INLINE GLuint ogl_to_gl_buf_kind(Ogl_Buf_Kind kind) {
   return 0; // I dont like this
 }
 
-INLINE b32 ogl_buf_update(Ogl_Buf *buf, u64 offset, void *data, u32 count, u32 bytes_per_elem) {
+static inline bool ogl_buf_update(Ogl_Buf *buf, uint64_t offset, void *data, uint32_t count, uint32_t bytes_per_elem) {
   if (buf) {
     GLuint gl_buf_kind = ogl_to_gl_buf_kind(buf->kind);
     glBindBuffer(gl_buf_kind, buf->impl_state);
@@ -113,7 +114,7 @@ GLuint e; for (e = glGetError(); e != GL_NO_ERROR; e = glGetError()) { printf("E
   return (buf != NULL);
 }
 
-INLINE b32 ogl_buf_init(Ogl_Buf *buf, Ogl_Buf_Kind kind, void *data, u32 count, u32 bytes_per_elem) {
+static inline bool ogl_buf_init(Ogl_Buf *buf, Ogl_Buf_Kind kind, void *data, uint32_t count, uint32_t bytes_per_elem) {
   if (buf) {
     buf->kind = kind;
     buf->count = count;
@@ -128,20 +129,20 @@ INLINE b32 ogl_buf_init(Ogl_Buf *buf, Ogl_Buf_Kind kind, void *data, u32 count, 
   return (buf != NULL);
 }
 
-INLINE Ogl_Buf ogl_buf_make(Ogl_Buf_Kind kind, void *data, u32 count, u32 bytes_per_elem) {
+static inline Ogl_Buf ogl_buf_make(Ogl_Buf_Kind kind, void *data, uint32_t count, uint32_t bytes_per_elem) {
   Ogl_Buf buf;
   assert(ogl_buf_init(&buf, kind, data, count, bytes_per_elem));
   return buf;
 }
 
-INLINE b32 ogl_buf_deinit(Ogl_Buf *buf) {
+static inline bool ogl_buf_deinit(Ogl_Buf *buf) {
   if (buf && buf->impl_state) {
     glDeleteBuffers(1, &buf->impl_state);
   }
   return (buf != NULL);
 }
 
-INLINE u32 ogl_data_get_count(Ogl_Data_Type type) {
+static inline uint32_t ogl_data_get_count(Ogl_Data_Type type) {
   switch (type) {
     case OGL_DATA_TYPE_FLOAT: return 1;
     case OGL_DATA_TYPE_INT:   return 1;
@@ -155,8 +156,7 @@ INLINE u32 ogl_data_get_count(Ogl_Data_Type type) {
   }
 }
 
-
-INLINE Ogl_Data_Type ogl_data_type_from_gl(GLenum type) {
+static inline Ogl_Data_Type ogl_data_type_from_gl(GLenum type) {
   switch (type) {
     case GL_FLOAT:      return OGL_DATA_TYPE_FLOAT;
     case GL_INT:        return OGL_DATA_TYPE_INT;
@@ -171,7 +171,7 @@ INLINE Ogl_Data_Type ogl_data_type_from_gl(GLenum type) {
   return OGL_DATA_TYPE_FLOAT;
 }
 
-INLINE GLuint ogl_prim_type_to_gl_type(Ogl_Prim_Type prim) {
+static inline GLuint ogl_prim_type_to_gl_type(Ogl_Prim_Type prim) {
   switch (prim) {
     case OGL_PRIM_TYPE_POINT:          return GL_POINTS;
     case OGL_PRIM_TYPE_LINE:           return GL_LINES;
@@ -182,9 +182,7 @@ INLINE GLuint ogl_prim_type_to_gl_type(Ogl_Prim_Type prim) {
   }
 }
 
-
-
-INLINE GLuint _gl_create_shader(const char* vertex_source, const char* fragment_source) {
+static inline GLuint _gl_create_shader(const char* vertex_source, const char* fragment_source) {
   GLuint vs = glCreateShader(GL_VERTEX_SHADER);
   glShaderSource(vs, 1, &vertex_source, NULL);
   glCompileShader(vs);
@@ -224,12 +222,12 @@ INLINE GLuint _gl_create_shader(const char* vertex_source, const char* fragment_
   return sp;
 }
 
-INLINE b32 ogl_vert_attrib_is_integral(Ogl_Vert_Attrib *attrib) {
+static inline bool ogl_vert_attrib_is_integral(Ogl_Vert_Attrib *attrib) {
   Ogl_Data_Type type = attrib->type;
   return (type == OGL_DATA_TYPE_INT || type == OGL_DATA_TYPE_IVEC2 || type == OGL_DATA_TYPE_IVEC3 || type == OGL_DATA_TYPE_IVEC4);
 }
 
-INLINE void ogl_shader_detect_vert_attribs(Ogl_Shader *shader) {
+static inline void ogl_shader_detect_vert_attribs(Ogl_Shader *shader) {
   char name_buf[256];
   GLint attrib_count;
   glGetProgramiv(shader->impl_state, GL_ACTIVE_ATTRIBUTES, &attrib_count);
@@ -250,7 +248,7 @@ INLINE void ogl_shader_detect_vert_attribs(Ogl_Shader *shader) {
 }
 
 
-INLINE b32 ogl_shader_init(Ogl_Shader *shader, const char* vertex_source, const char* fragment_source) {
+static inline bool ogl_shader_init(Ogl_Shader *shader, const char* vertex_source, const char* fragment_source) {
   shader->impl_state = _gl_create_shader(vertex_source, fragment_source);
   if (shader->impl_state){
     ogl_shader_detect_vert_attribs(shader);
@@ -258,13 +256,13 @@ INLINE b32 ogl_shader_init(Ogl_Shader *shader, const char* vertex_source, const 
   return (shader->impl_state != 0);
 }
 
-INLINE Ogl_Shader ogl_shader_make(const char* vertex_source, const char* fragment_source) {
+static inline Ogl_Shader ogl_shader_make(const char* vertex_source, const char* fragment_source) {
   Ogl_Shader shader = {0};
   assert(ogl_shader_init(&shader, vertex_source, fragment_source)); 
   return shader;
 }
 
-INLINE void ogl_shader_deinit(Ogl_Shader *shader) {
+static inline void ogl_shader_deinit(Ogl_Shader *shader) {
   if (shader) {
     glDeleteProgram(shader->impl_state);
     shader->impl_state = 0;
@@ -277,12 +275,13 @@ typedef enum {
 } Ogl_Dyn_State_Flags;
 
 typedef struct {
-  v4 viewport; // TODO: Make this a RECT of some kind
-  v4 scissor;  // TODO: Make this a RECT of some kind
-  u64 flags;
+  Ogl_Rect viewport;
+  Ogl_Rect scissor;
+  uint64_t flags;
   // TODO: add extra dynamic state (e.g blend mode / depth state)
 }Ogl_Dyn_State;
 
+// TODO: Maybe we should have views to buffers instead of actual ones right?
 typedef struct {
   Ogl_Shader sp;
 
@@ -294,14 +293,14 @@ typedef struct {
   Ogl_Dyn_State dyn_state;
 } Ogl_Render_Bundle;
 
-INLINE void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
+static inline void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
   // Bind the shader
   glUseProgram(bundle->sp.impl_state); 
   // Bind the index buffer
   glBindBuffer(ogl_to_gl_buf_kind(bundle->index_buffer.kind), bundle->index_buffer.impl_state);
   // Bind the vertex buffer(s) + set attributes
   glBindBuffer(ogl_to_gl_buf_kind(bundle->vertex_buffer.kind), bundle->vertex_buffer.impl_state);
-  for (u64 vattr_idx = 0; vattr_idx < array_count(bundle->vattribs); ++vattr_idx) {
+  for (uint64_t vattr_idx = 0; vattr_idx < OGL_MAX_ATTRIBS; ++vattr_idx) {
     Ogl_Vert_Attrib *attr = &bundle->vattribs[vattr_idx];
     if (attr->avail) {
       glEnableVertexAttribArray(vattr_idx);
@@ -317,12 +316,12 @@ INLINE void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
     }
   }
   // Set the dynamic state
-  v4 viewport = bundle->dyn_state.viewport;
-  glViewport(viewport.x, viewport.y, viewport.z, viewport.w);
+  Ogl_Rect viewport = bundle->dyn_state.viewport;
+  glViewport(viewport.x, viewport.y, viewport.w, viewport.h);
   if (bundle->dyn_state.flags & OGL_DYN_STATE_FLAG_SCISSOR) {
     glEnable(GL_SCISSOR_TEST);
-    v4 scissor = bundle->dyn_state.scissor;
-    glViewport(scissor.x, scissor.y, scissor.z, scissor.w);
+    Ogl_Rect scissor = bundle->dyn_state.scissor;
+    glViewport(scissor.x, scissor.y, scissor.w, scissor.h);
   } else {
     glDisable(GL_SCISSOR_TEST);
   }
@@ -334,13 +333,13 @@ INLINE void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
   }
 }
 
-INLINE void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, u32 vertex_count, u32 instance_count) {
+static inline void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t instance_count) {
   ogl_render_bundle_bind(bundle);
   // first = 0? why? we need to enhance the API
   glDrawArraysInstanced(ogl_prim_type_to_gl_type(prim), 0, vertex_count, instance_count);
 }
 
-INLINE void ogl_render_bundle_draw_instanced(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, u32 vertex_count, u32 indices_count, u32 instance_count) {
+static inline void ogl_render_bundle_draw_instanced(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t indices_count, uint32_t instance_count) {
   ogl_render_bundle_bind(bundle);
   //glDrawElementsInstanced(GLenum mode, GLsizei count, GLenum type, const void * indices, GLsizei instancecount);
 }
