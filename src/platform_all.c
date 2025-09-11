@@ -1,20 +1,22 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_log.h>
 //#include <SDL3/SDL_opengl.h>
-#include <GL/glew.h>
 #include <stdio.h>
 #include <assert.h>
-#include "ogl.h"
 #include "helper.h"
 #include "profiler.h"
+
+#include <GL/glew.h>
+#define OGL_IMPLEMENTATION
+#include "ogl.h"
 
 // we need this to port to WASM sadly, because WASM programs are event based, no main loops :(
 #define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL_main.h>
 
-void game_init(void);
-void game_update(float dt);
-void game_render(void);
+extern void game_init(void);
+extern void game_update(float dt);
+extern void game_render(void);
 
 typedef struct {
   SDL_Window *window;

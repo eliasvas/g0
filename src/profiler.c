@@ -38,7 +38,7 @@ void profiler_print() {
     printf(")\n");
     }
   }
-  printf("-----------------------");
+  printf("-----------------------\n");
 }
 
 void profiler_end_and_print() {

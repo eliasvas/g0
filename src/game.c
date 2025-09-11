@@ -1,7 +1,6 @@
 #include "helper.h"
-#include <GL/glew.h>
-#include "ogl.h"
 #include "math3d.h"
+#include "ogl.h"
 
 /*
 const u8 font_data[] = {
@@ -9,7 +8,6 @@ const u8 font_data[] = {
 };
 */
 
-// For some reason AT LEAST the vetex shader compilation fails on Emscripten
 const char* vs_source = R"(#version 300 es
 precision highp float;
 layout (location = 0) in vec3 v_pos;
@@ -22,31 +20,42 @@ const char* fs_source = R"(#version 300 es
 precision highp float;
 out vec4 out_color;
 in vec3 f_color;
-void main() { out_color = vec4(f_color, 1.0f); }
+layout (std140) uniform UboExample { float modifier; float pad0; float pad1; float pad2;};
+
+void main() {
+  out_color = modifier* vec4(f_color, 1.0f);
+}
+
 )";
 
 global_var Ogl_Render_Bundle rbundle = {0};
 
 void game_init(void) {
   ogl_init(); // To create the bullshit empty VAO opengl side, nothing else
-  
-  f32 vertices[] = {
-    -0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
-     0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
-     0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f
-  };
 
   rbundle = (Ogl_Render_Bundle){
     .sp = ogl_shader_make(vs_source, fs_source),
-    .vertex_buffer = ogl_buf_make(OGL_BUF_KIND_VERTEX, vertices, 3, sizeof(v3) * 2),
-    .vattribs = {
-      [0] = { .location = 0, .type = OGL_DATA_TYPE_VEC3, .offset = 0, .avail = true },
-      [1] = { .location = 1, .type = OGL_DATA_TYPE_VEC3, .offset = sizeof(v3), .avail = true },
+    .vbos = {
+      [0] = {
+        .buffer = ogl_buf_make(OGL_BUF_KIND_VERTEX, (f32[]) {
+              -0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
+               0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
+               0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f
+            }, 3, sizeof(v3) * 2),
+        .vattribs = {
+          [0] = { .location = 0, .type = OGL_DATA_TYPE_VEC3, .offset = 0 },
+          [1] = { .location = 1, .type = OGL_DATA_TYPE_VEC3, .offset = sizeof(v3), },
+        },
+      },
+    },
+    .ubos = {
+      [0] = { .name = "UboExample", .buffer = ogl_buf_make(OGL_BUF_KIND_UNIFORM, (f32[]) { 0.9, 0,0,0 }, 1, sizeof(f32)*4), .start_offset = 0, .size = sizeof(float)*4 },
     },
     .dyn_state = (Ogl_Dyn_State){
       .viewport = {0,0,800,600},
     }
   };
+
 }
 
 // TODO: make a game.h -> make a Game_Event thingy with SLL -> pass to update
