@@ -1,10 +1,14 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_log.h>
-//#include <SDL3/SDL_opengl.h>
+
 #include <stdio.h>
 #include <assert.h>
+
 #include "helper.h"
 #include "profiler.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
 
 #include <GL/glew.h>
 #define OGL_IMPLEMENTATION
@@ -17,6 +21,27 @@
 extern void game_init(void);
 extern void game_update(float dt);
 extern void game_render(void);
+
+typedef struct {
+  u8 *data;
+  u64 width;
+  u64 height;
+  // Always RGBA so no need for component count
+} Platform_Image_Data;
+
+Platform_Image_Data platform_load_image_bytes_as_rgba(const char *filepath) {
+  Platform_Image_Data img_data = {};
+
+  stbi_set_flip_vertically_on_load(true);
+  int width, height, nrChannels;
+  u8 *px_data = stbi_load(filepath, &width, &height, &nrChannels, STBI_rgb_alpha);
+
+  img_data.width = width;
+  img_data.height = height;
+  img_data.data = px_data;
+
+  return img_data;
+}
 
 typedef struct {
   SDL_Window *window;

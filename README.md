@@ -2,7 +2,13 @@
 
 ## Deps
 ```terminal
-sudo dnf install clang SDL3 SDL3-devel glew glew-devel -y
+sudo dnf install git clang SDL3 SDL3-devel glew glew-devel -y
+git lfs install
+```
+## Cloning
+This repo uses git LFS for assets and a submodule for stb libraries, you can:
+```bash
+git clone --recursive https://github.com/eliasvas/g0
 ```
 ## Building
 ### Linux

@@ -4,7 +4,6 @@
 // To debug OpenGL error on the fly
 //GLuint e; for (e = glGetError(); e != GL_NO_ERROR; e = glGetError()) { printf("Error: %d\n", e); }
 
-// TODO: Maybe all internal functions should be a separate layer, like create_shader and conversions and stuff
 // TODO: Add a Usage field in vertex buffer create to specify STREAM/DYNAMIC/STATIC
 // TODO: Make this into an actual single header library
 // TODO: Make an API to begin..end drawing, for when we want to draw many stuff with same render bundle state
@@ -43,6 +42,12 @@ typedef enum {
 #define OGL_MAX_VERTEX_BUFFERS 8
 #define OGL_MAX_ATTRIBS 16
 #define OGL_MAX_UNIFORM_BUFFERS 4
+
+typedef enum{
+  OGL_BUF_HINT_STATIC, // Data set once
+  OGL_BUF_HINT_DYNAMIC, // Data updated occasionally
+  OGL_BUF_HINT_STREAM, // Data updated after every use
+} Ogl_Buf_Hint;
 
 typedef struct {
   int64_t bytes_per_elem;
@@ -127,8 +132,8 @@ typedef struct {
   extern void ogl_clear(Ogl_Color color);
 
   extern bool ogl_buf_update(Ogl_Buf *buf, uint64_t offset, void *data, uint32_t count, uint32_t bytes_per_elem);
-  extern bool ogl_buf_init(Ogl_Buf *buf, Ogl_Buf_Kind kind, void *data, uint32_t count, uint32_t bytes_per_elem);
-  extern Ogl_Buf ogl_buf_make(Ogl_Buf_Kind kind, void *data, uint32_t count, uint32_t bytes_per_elem);
+  extern bool ogl_buf_init(Ogl_Buf *buf, Ogl_Buf_Kind kind, Ogl_Buf_Hint hint, void *data, uint32_t count, uint32_t bytes_per_elem);
+  extern Ogl_Buf ogl_buf_make(Ogl_Buf_Kind kind, Ogl_Buf_Hint hint, void *data, uint32_t count, uint32_t bytes_per_elem);
   extern bool ogl_buf_deinit(Ogl_Buf *buf);
 
   extern bool ogl_shader_init(Ogl_Shader *shader, const char* vertex_source, const char* fragment_source);
@@ -157,6 +162,17 @@ static int64_t ogl_buf_count_bytes(Ogl_Buf *buf) {
   return buf->count * buf->bytes_per_elem;
 }
 
+static GLuint ogl_to_gl_buf_hint(Ogl_Buf_Hint hint) {
+  switch (hint) {
+    case OGL_BUF_HINT_STATIC:  return GL_STATIC_DRAW;
+    case OGL_BUF_HINT_DYNAMIC: return GL_DYNAMIC_DRAW;
+    case OGL_BUF_HINT_STREAM:  return GL_STREAM_DRAW;
+    default: break;
+  }
+  return 0; // I dont like this
+
+}
+
 static GLuint ogl_to_gl_buf_kind(Ogl_Buf_Kind kind) {
   switch (kind) {
     case OGL_BUF_KIND_VERTEX:  return GL_ARRAY_BUFFER;
@@ -171,17 +187,15 @@ bool ogl_buf_update(Ogl_Buf *buf, uint64_t offset, void *data, uint32_t count, u
   if (buf) {
     GLuint gl_buf_kind = ogl_to_gl_buf_kind(buf->kind);
     glBindBuffer(gl_buf_kind, buf->impl_state);
-   
     if (data) {
       glBufferSubData(gl_buf_kind, 0, count*bytes_per_elem, data);
-GLuint e; for (e = glGetError(); e != GL_NO_ERROR; e = glGetError()) { printf("Error: %d\n", e); }
     }
     glBindBuffer(gl_buf_kind, 0);
   }
   return (buf != NULL);
 }
 
-bool ogl_buf_init(Ogl_Buf *buf, Ogl_Buf_Kind kind, void *data, uint32_t count, uint32_t bytes_per_elem) {
+bool ogl_buf_init(Ogl_Buf *buf, Ogl_Buf_Kind kind, Ogl_Buf_Hint hint, void *data, uint32_t count, uint32_t bytes_per_elem) {
   if (buf) {
     buf->kind = kind;
     buf->count = count;
@@ -190,15 +204,15 @@ bool ogl_buf_init(Ogl_Buf *buf, Ogl_Buf_Kind kind, void *data, uint32_t count, u
     GLuint gl_buf_kind = ogl_to_gl_buf_kind(kind);
     glGenBuffers(1, &buf->impl_state);
     glBindBuffer(gl_buf_kind, buf->impl_state);
-    glBufferData(gl_buf_kind, count*bytes_per_elem, data, GL_STATIC_DRAW); // if data == nil, buf will be zeroed
+    glBufferData(gl_buf_kind, count*bytes_per_elem, data, ogl_to_gl_buf_hint(hint)); // if data == nil, buf will be zeroed
     glBindBuffer(gl_buf_kind, 0);
   }
   return (buf != NULL);
 }
 
-Ogl_Buf ogl_buf_make(Ogl_Buf_Kind kind, void *data, uint32_t count, uint32_t bytes_per_elem) {
+Ogl_Buf ogl_buf_make(Ogl_Buf_Kind kind, Ogl_Buf_Hint hint, void *data, uint32_t count, uint32_t bytes_per_elem) {
   Ogl_Buf buf;
-  assert(ogl_buf_init(&buf, kind, data, count, bytes_per_elem));
+  assert(ogl_buf_init(&buf, kind, hint, data, count, bytes_per_elem));
   return buf;
 }
 
@@ -343,7 +357,7 @@ static void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
   // Bind the index buffer
   glBindBuffer(ogl_to_gl_buf_kind(bundle->index_buffer.kind), bundle->index_buffer.impl_state);
   // Bind the vertex buffer(s) + set attributes
-  for (uint64_t vbo_idx = 0; vbo_idx < OGL_MAX_UNIFORM_BUFFERS; ++vbo_idx) {
+  for (uint64_t vbo_idx = 0; vbo_idx < OGL_MAX_VERTEX_BUFFERS; ++vbo_idx) {
     Ogl_Vertex_Buffer_Desc *vbo = &bundle->vbos[vbo_idx];
     if (ogl_buf_count_bytes(&vbo->buffer) > 0) {
       glBindBuffer(ogl_to_gl_buf_kind(vbo->buffer.kind), vbo->buffer.impl_state);
