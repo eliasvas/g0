@@ -11,6 +11,7 @@
 // TODO: locations dont need to be encoded for vertex attribs, they correspond to array's indices
 // TODO: Make a OGL_NO_CRT and act accordingly.. maybe have NO_CRT the default
 // TODO: Should we include here the OpenGL deps? Right now they are inside platform_XXX.c
+// TODO: More texture stuff, encode Regular vs SRGB and floating point textures (right now only u8 RGBA is supported!)
 
 // https://www.3dgep.com/forward-plus/
 
@@ -42,6 +43,7 @@ typedef enum {
 #define OGL_MAX_VERTEX_BUFFERS 8
 #define OGL_MAX_ATTRIBS 16
 #define OGL_MAX_UNIFORM_BUFFERS 4
+#define OGL_MAX_ACTIVE_TEXTURES 4
 
 typedef enum{
   OGL_BUF_HINT_STATIC, // Data set once
@@ -81,6 +83,32 @@ typedef struct {
 } Ogl_Vert_Attrib;
 
 
+typedef enum{
+  OGL_TEX_FILTER_NEAREST,
+  OGL_TEX_FILTER_LINEAR,
+} Ogl_Tex_Filter;
+
+typedef enum{
+  OGL_TEX_WRAP_MODE_CLAMP_TO_EDGE,
+  OGL_TEX_WRAP_MODE_REPEAT,
+} Ogl_Tex_Wrap_Mode;
+
+typedef struct {
+  Ogl_Tex_Filter min_filter;
+  Ogl_Tex_Filter mag_filter;
+
+  Ogl_Tex_Wrap_Mode wrap_s;
+  Ogl_Tex_Wrap_Mode wrap_t;
+  Ogl_Tex_Wrap_Mode wrap_r;
+} Ogl_Tex_Params;
+
+typedef struct {
+  u32 width;
+  u32 height;
+  Ogl_Tex_Params params;
+  u64 impl_state;
+} Ogl_Tex;
+
 typedef struct {
   // This is kind-of a hack, we use Ogl_Vert_Attrib's and don't fill most fields
   Ogl_Vert_Attrib vattribs[OGL_MAX_ATTRIBS];
@@ -105,12 +133,17 @@ typedef struct {
   Ogl_Buf buffer;
   uint64_t start_offset;
   uint64_t size;
-}Ogl_Uniform_Buffer_Desc;
+}Ogl_Uniform_Buffer_Slot;
 
 typedef struct {
   Ogl_Buf buffer;
   Ogl_Vert_Attrib vattribs[OGL_MAX_ATTRIBS];
-} Ogl_Vertex_Buffer_Desc;
+} Ogl_Vertex_Buffer_Slot;
+
+typedef struct {
+  const char *name;
+  Ogl_Tex tex;
+} Ogl_Tex_Slot;
 
 // This is a dirty cache pretty much..
 typedef struct {
@@ -118,13 +151,13 @@ typedef struct {
 
   Ogl_Buf index_buffer;
 
-  Ogl_Vertex_Buffer_Desc vbos[OGL_MAX_VERTEX_BUFFERS];
-  Ogl_Uniform_Buffer_Desc ubos[OGL_MAX_UNIFORM_BUFFERS];
+  Ogl_Vertex_Buffer_Slot  vbos[OGL_MAX_VERTEX_BUFFERS];
+  Ogl_Uniform_Buffer_Slot ubos[OGL_MAX_UNIFORM_BUFFERS];
+  Ogl_Tex_Slot            textures[OGL_MAX_ACTIVE_TEXTURES];
+
 
   Ogl_Dyn_State dyn_state;
 } Ogl_Render_Bundle;
-
-
 
 #ifndef OGL_IMPLEMENTATION
 
@@ -139,6 +172,10 @@ typedef struct {
   extern bool ogl_shader_init(Ogl_Shader *shader, const char* vertex_source, const char* fragment_source);
   extern Ogl_Shader ogl_shader_make(const char* vertex_source, const char* fragment_source);
   extern void ogl_shader_deinit(Ogl_Shader *shader);
+
+  void ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Params params);
+  Ogl_Tex ogl_tex_make(u8 *data, u32 w, u32 h, Ogl_Tex_Params params);
+  void ogl_tex_deinit(Ogl_Tex *tex);
 
   extern void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t instance_count);
   extern void ogl_render_bundle_draw_instanced(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t indices_count, uint32_t instance_count);
@@ -351,14 +388,59 @@ void ogl_shader_deinit(Ogl_Shader *shader) {
   }
 }
 
+static GLuint ogl_to_gl_wrap_mode(Ogl_Tex_Wrap_Mode mode) {
+  switch (mode) {
+    case OGL_TEX_WRAP_MODE_CLAMP_TO_EDGE: return GL_CLAMP_TO_EDGE;
+    case OGL_TEX_WRAP_MODE_REPEAT: return GL_REPEAT;
+  }
+}
+
+static GLuint ogl_to_gl_tex_filter(Ogl_Tex_Filter filter) {
+  switch(filter) {
+    case OGL_TEX_FILTER_NEAREST: return GL_NEAREST;
+    case OGL_TEX_FILTER_LINEAR: return GL_LINEAR;
+  }
+}
+
+
+void ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Params params) {
+  tex->params = params;
+  tex->width = w;
+  tex->height = h;
+
+  GLuint texture_id;
+  glGenTextures(1, &texture_id);
+  glBindTexture(GL_TEXTURE_2D, texture_id);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, ogl_to_gl_wrap_mode(tex->params.wrap_s));
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, ogl_to_gl_wrap_mode(tex->params.wrap_t));
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, ogl_to_gl_wrap_mode(tex->params.wrap_r));
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, ogl_to_gl_tex_filter(tex->params.min_filter));
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, ogl_to_gl_tex_filter(tex->params.mag_filter));
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+  glGenerateMipmap(GL_TEXTURE_2D);
+  tex->impl_state = texture_id;
+}
+
+Ogl_Tex ogl_tex_make(u8 *data, u32 w, u32 h, Ogl_Tex_Params params) {
+  Ogl_Tex tex = {};
+  ogl_tex_init(&tex, data, w, h, params);
+  return tex;
+}
+
+void ogl_tex_deinit(Ogl_Tex *tex) {
+  glDeleteTextures(1, (GLuint*)&tex->impl_state);
+  tex->impl_state = 0;
+}
+
+
 static void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
   // Bind the shader
   glUseProgram(bundle->sp.impl_state); 
   // Bind the index buffer
   glBindBuffer(ogl_to_gl_buf_kind(bundle->index_buffer.kind), bundle->index_buffer.impl_state);
   // Bind the vertex buffer(s) + set attributes
-  for (uint64_t vbo_idx = 0; vbo_idx < OGL_MAX_VERTEX_BUFFERS; ++vbo_idx) {
-    Ogl_Vertex_Buffer_Desc *vbo = &bundle->vbos[vbo_idx];
+  for (uint64_t slot_idx = 0; slot_idx < OGL_MAX_VERTEX_BUFFERS; ++slot_idx) {
+    Ogl_Vertex_Buffer_Slot *vbo = &bundle->vbos[slot_idx];
     if (ogl_buf_count_bytes(&vbo->buffer) > 0) {
       glBindBuffer(ogl_to_gl_buf_kind(vbo->buffer.kind), vbo->buffer.impl_state);
       for (uint64_t vattr_idx = 0; vattr_idx < OGL_MAX_ATTRIBS; ++vattr_idx) {
@@ -379,12 +461,24 @@ static void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
     }
   }
   // Bind the uniform buffer(s)
-  for (uint64_t binding_idx = 0; binding_idx < OGL_MAX_UNIFORM_BUFFERS; ++binding_idx) {
-    Ogl_Uniform_Buffer_Desc *ubo = &bundle->ubos[binding_idx];
+  for (uint64_t slot_idx = 0; slot_idx < OGL_MAX_UNIFORM_BUFFERS; ++slot_idx) {
+    Ogl_Uniform_Buffer_Slot *ubo = &bundle->ubos[slot_idx];
     if (ogl_buf_count_bytes(&ubo->buffer) > 0) {
       GLuint ubo_block_idx = glGetUniformBlockIndex(bundle->sp.impl_state, ubo->name);
-      glUniformBlockBinding(bundle->sp.impl_state, ubo_block_idx, binding_idx);
-      glBindBufferRange(GL_UNIFORM_BUFFER, binding_idx, ubo->buffer.impl_state, ubo->start_offset, ubo->size);
+      glUniformBlockBinding(bundle->sp.impl_state, ubo_block_idx, slot_idx);
+      glBindBufferRange(GL_UNIFORM_BUFFER, slot_idx, ubo->buffer.impl_state, ubo->start_offset, ubo->size);
+    }
+  }
+  // Bind the texture(s)
+  for (uint64_t slot_idx = 0; slot_idx < OGL_MAX_UNIFORM_BUFFERS; ++slot_idx) {
+    Ogl_Tex_Slot *tex = &bundle->textures[slot_idx];
+    if (tex->tex.impl_state) {
+      glActiveTexture(GL_TEXTURE0+slot_idx);
+      glBindTexture(GL_TEXTURE_2D, tex->tex.impl_state);
+      GLuint tex_loc = glGetUniformLocation(bundle->sp.impl_state, tex->name); 
+      // NOTE: If we first bind all the textures to slots we can populate a c-style sampler array via glUniform1iv and passing all slot_idx's
+      GLint *samplers = (GLint[]) {(GLint)slot_idx};
+      glUniform1iv(tex_loc, 1, samplers);
     }
   }
   // Set the dynamic state
