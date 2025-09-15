@@ -12,6 +12,11 @@
 // TODO: Make a OGL_NO_CRT and act accordingly.. maybe have NO_CRT the default
 // TODO: Should we include here the OpenGL deps? Right now they are inside platform_XXX.c
 // TODO: More texture stuff, encode Regular vs SRGB and floating point textures (right now only u8 RGBA is supported!)
+// TODO: Heavy cleanup needed, we need our functions to return bools and stuff
+
+
+// TODO: Support RTT and binding multiple textures in a sampler!!
+
 
 // https://www.3dgep.com/forward-plus/
 
@@ -44,6 +49,8 @@ typedef enum {
 #define OGL_MAX_ATTRIBS 16
 #define OGL_MAX_UNIFORM_BUFFERS 4
 #define OGL_MAX_ACTIVE_TEXTURES 4
+#define OGL_MAX_RENDER_TARGET_ATTACHMENTS 4
+
 
 typedef enum{
   OGL_BUF_HINT_STATIC, // Data set once
@@ -100,6 +107,8 @@ typedef struct {
   Ogl_Tex_Wrap_Mode wrap_s;
   Ogl_Tex_Wrap_Mode wrap_t;
   Ogl_Tex_Wrap_Mode wrap_r;
+
+  bool is_depth;
 } Ogl_Tex_Params;
 
 typedef struct {
@@ -145,6 +154,17 @@ typedef struct {
   Ogl_Tex tex;
 } Ogl_Tex_Slot;
 
+typedef struct {
+  Ogl_Tex attachments[OGL_MAX_RENDER_TARGET_ATTACHMENTS];
+  Ogl_Tex depth_attachment;
+
+  u32 width; 
+  u32 height;
+  u64 impl_state;
+} Ogl_Render_Target;
+
+
+
 // This is a dirty cache pretty much..
 typedef struct {
   Ogl_Shader sp;
@@ -155,6 +175,7 @@ typedef struct {
   Ogl_Uniform_Buffer_Slot ubos[OGL_MAX_UNIFORM_BUFFERS];
   Ogl_Tex_Slot            textures[OGL_MAX_ACTIVE_TEXTURES];
 
+  Ogl_Render_Target rt;
 
   Ogl_Dyn_State dyn_state;
 } Ogl_Render_Bundle;
@@ -173,12 +194,16 @@ typedef struct {
   extern Ogl_Shader ogl_shader_make(const char* vertex_source, const char* fragment_source);
   extern void ogl_shader_deinit(Ogl_Shader *shader);
 
-  void ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Params params);
-  Ogl_Tex ogl_tex_make(u8 *data, u32 w, u32 h, Ogl_Tex_Params params);
-  void ogl_tex_deinit(Ogl_Tex *tex);
+  extern void ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Params params);
+  extern Ogl_Tex ogl_tex_make(u8 *data, u32 w, u32 h, Ogl_Tex_Params params);
+  extern void ogl_tex_deinit(Ogl_Tex *tex);
 
   extern void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t instance_count);
   extern void ogl_render_bundle_draw_instanced(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t indices_count, uint32_t instance_count);
+
+  extern void ogl_render_target_init(Ogl_Render_Target *rt, u32 w, u32 h, u32 attachment_count, bool add_depth);
+  extern Ogl_Render_Target ogl_render_target_make(u32 w, u32 h, u32 attachment_count, bool add_depth);
+  extern void ogl_render_target_deinit(Ogl_Render_Target *rt);
 
 #else
 
@@ -416,9 +441,17 @@ void ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Params params) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, ogl_to_gl_wrap_mode(tex->params.wrap_r));
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, ogl_to_gl_tex_filter(tex->params.min_filter));
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, ogl_to_gl_tex_filter(tex->params.mag_filter));
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+  GLint internal_format = (params.is_depth) ? GL_DEPTH_COMPONENT : GL_RGBA;
+  // TODO: what about floating point render target attachments?
+  GLenum type = (params.is_depth) ? GL_FLOAT : GL_UNSIGNED_BYTE;
+  glTexImage2D(GL_TEXTURE_2D, 0, internal_format, w, h, 0, internal_format, type, data);
+
   glGenerateMipmap(GL_TEXTURE_2D);
   tex->impl_state = texture_id;
+
+  // TODO: remove this make tex_init a bool function (or b32)
+  assert(tex->impl_state);
 }
 
 Ogl_Tex ogl_tex_make(u8 *data, u32 w, u32 h, Ogl_Tex_Params params) {
@@ -430,6 +463,50 @@ Ogl_Tex ogl_tex_make(u8 *data, u32 w, u32 h, Ogl_Tex_Params params) {
 void ogl_tex_deinit(Ogl_Tex *tex) {
   glDeleteTextures(1, (GLuint*)&tex->impl_state);
   tex->impl_state = 0;
+}
+
+void ogl_render_target_init(Ogl_Render_Target *rt, u32 w, u32 h, u32 attachment_count, bool add_depth) {
+  assert(attachment_count <= OGL_MAX_RENDER_TARGET_ATTACHMENTS);
+
+  rt->width = w;
+  rt->height = h;
+
+  GLuint fbo = 0;
+  glGenFramebuffers(1, &fbo);
+  rt->impl_state = fbo;
+  assert(rt->impl_state);
+  glBindFramebuffer(GL_FRAMEBUFFER, rt->impl_state);
+
+  for (u32 attachment_idx = 0; attachment_idx < attachment_count; ++attachment_idx) {
+    rt->attachments[attachment_idx] = ogl_tex_make(NULL, rt->width, rt->height, (Ogl_Tex_Params){});
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + attachment_idx, rt->attachments[attachment_idx].impl_state, 0);
+  }
+
+  if (add_depth) {
+    rt->depth_attachment = ogl_tex_make(NULL, rt->width, rt->height, (Ogl_Tex_Params){.is_depth = true,});
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, rt->depth_attachment.impl_state, 0);
+  }
+
+  GLenum draw_buffers[OGL_MAX_RENDER_TARGET_ATTACHMENTS];
+  for (u32 attachment_idx = 0; attachment_idx < attachment_count; ++attachment_idx) {
+    draw_buffers[attachment_idx] = GL_COLOR_ATTACHMENT0 + attachment_idx;
+  }
+  glDrawBuffers(attachment_count, draw_buffers);
+
+  assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+Ogl_Render_Target ogl_render_target_make(u32 w, u32 h, u32 attachment_count, bool add_depth) {
+  Ogl_Render_Target rt = {};
+  ogl_render_target_init(&rt, w, h, attachment_count, add_depth);
+  return rt;
+}
+
+
+void ogl_render_target_deinit(Ogl_Render_Target *rt) {
+  glDeleteFramebuffers(1, (GLuint*)&rt->impl_state);
 }
 
 
@@ -481,6 +558,15 @@ static void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
       glUniform1iv(tex_loc, 1, samplers);
     }
   }
+  // Bind the render target 
+  if (bundle->rt.width * bundle->rt.height > 0) {
+    glBindFramebuffer(GL_FRAMEBUFFER, bundle->rt.impl_state);
+    assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+  } else {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+  }
+
   // Set the dynamic state
   Ogl_Rect viewport = bundle->dyn_state.viewport;
   glViewport(viewport.x, viewport.y, viewport.w, viewport.h);
@@ -501,7 +587,7 @@ static void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
 
 void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t instance_count) {
   ogl_render_bundle_bind(bundle);
-  // first = 0? why? we need to enhance the API
+  // FIXME: first == 0? why? we need to enhance the API
   glDrawArraysInstanced(ogl_prim_type_to_gl_type(prim), 0, vertex_count, instance_count);
 }
 
