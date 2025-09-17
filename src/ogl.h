@@ -4,18 +4,10 @@
 // To debug OpenGL error on the fly
 //GLuint e; for (e = glGetError(); e != GL_NO_ERROR; e = glGetError()) { printf("Error: %d\n", e); }
 
-// TODO: Add a Usage field in vertex buffer create to specify STREAM/DYNAMIC/STATIC
-// TODO: Make this into an actual single header library
 // TODO: Make an API to begin..end drawing, for when we want to draw many stuff with same render bundle state
 // TODO: Maybe we should have views to buffers instead of actual ones right?
-// TODO: locations dont need to be encoded for vertex attribs, they correspond to array's indices
 // TODO: Make a OGL_NO_CRT and act accordingly.. maybe have NO_CRT the default
-// TODO: Should we include here the OpenGL deps? Right now they are inside platform_XXX.c
-// TODO: More texture stuff, encode Regular vs SRGB and floating point textures (right now only u8 RGBA is supported!)
-// TODO: Heavy cleanup needed, we need our functions to return bools and stuff
-
-
-// TODO: Support RTT and binding multiple textures in a sampler!!
+// TODO: Compute shader support
 
 
 // https://www.3dgep.com/forward-plus/
@@ -90,12 +82,12 @@ typedef struct {
 } Ogl_Vert_Attrib;
 
 
-typedef enum{
+typedef enum {
   OGL_TEX_FILTER_NEAREST,
   OGL_TEX_FILTER_LINEAR,
 } Ogl_Tex_Filter;
 
-typedef enum{
+typedef enum {
   OGL_TEX_WRAP_MODE_CLAMP_TO_EDGE,
   OGL_TEX_WRAP_MODE_REPEAT,
 } Ogl_Tex_Wrap_Mode;
@@ -109,11 +101,20 @@ typedef struct {
   Ogl_Tex_Wrap_Mode wrap_r;
 
   bool is_depth;
+  bool generate_mips;
 } Ogl_Tex_Params;
+
+typedef enum {
+  OGL_TEX_FORMAT_R32F,
+  OGL_TEX_FORMAT_R8U,
+  OGL_TEX_FORMAT_RGBA8U,
+  OGL_TEX_FORMAT_RGBA32F,
+} Ogl_Tex_Format;
 
 typedef struct {
   u32 width;
   u32 height;
+  Ogl_Tex_Format format;
   Ogl_Tex_Params params;
   u64 impl_state;
 } Ogl_Tex;
@@ -134,7 +135,6 @@ typedef struct {
   Ogl_Rect viewport;
   Ogl_Rect scissor;
   uint64_t flags;
-  // TODO: add extra dynamic state (e.g blend mode / depth state)
 }Ogl_Dyn_State;
 
 typedef struct {
@@ -188,21 +188,21 @@ typedef struct {
   extern bool ogl_buf_update(Ogl_Buf *buf, uint64_t offset, void *data, uint32_t count, uint32_t bytes_per_elem);
   extern bool ogl_buf_init(Ogl_Buf *buf, Ogl_Buf_Kind kind, Ogl_Buf_Hint hint, void *data, uint32_t count, uint32_t bytes_per_elem);
   extern Ogl_Buf ogl_buf_make(Ogl_Buf_Kind kind, Ogl_Buf_Hint hint, void *data, uint32_t count, uint32_t bytes_per_elem);
-  extern bool ogl_buf_deinit(Ogl_Buf *buf);
+  extern void ogl_buf_deinit(Ogl_Buf *buf);
 
   extern bool ogl_shader_init(Ogl_Shader *shader, const char* vertex_source, const char* fragment_source);
   extern Ogl_Shader ogl_shader_make(const char* vertex_source, const char* fragment_source);
   extern void ogl_shader_deinit(Ogl_Shader *shader);
 
-  extern void ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Params params);
-  extern Ogl_Tex ogl_tex_make(u8 *data, u32 w, u32 h, Ogl_Tex_Params params);
+  extern bool ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Format format, Ogl_Tex_Params params);
+  extern Ogl_Tex ogl_tex_make(u8 *data, u32 w, u32 h, Ogl_Tex_Format format, Ogl_Tex_Params params);
   extern void ogl_tex_deinit(Ogl_Tex *tex);
 
   extern void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t instance_count);
   extern void ogl_render_bundle_draw_instanced(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t indices_count, uint32_t instance_count);
 
-  extern void ogl_render_target_init(Ogl_Render_Target *rt, u32 w, u32 h, u32 attachment_count, bool add_depth);
-  extern Ogl_Render_Target ogl_render_target_make(u32 w, u32 h, u32 attachment_count, bool add_depth);
+  extern void ogl_render_target_init(Ogl_Render_Target *rt, u32 w, u32 h, u32 attachment_count, Ogl_Tex_Format format, bool add_depth);
+  extern Ogl_Render_Target ogl_render_target_make(u32 w, u32 h, u32 attachment_count, Ogl_Tex_Format format, bool add_depth);
   extern void ogl_render_target_deinit(Ogl_Render_Target *rt);
 
 #else
@@ -214,7 +214,6 @@ void ogl_init() {
   glBindVertexArray(vao);
 }
 
-// TODO: maybe we should make this too just a render bundle huh?!
 void ogl_clear(Ogl_Color color) {
   glClearColor(color.r, color.g, color.b, color.a);
   glClear(GL_COLOR_BUFFER_BIT);
@@ -278,11 +277,10 @@ Ogl_Buf ogl_buf_make(Ogl_Buf_Kind kind, Ogl_Buf_Hint hint, void *data, uint32_t 
   return buf;
 }
 
-bool ogl_buf_deinit(Ogl_Buf *buf) {
+void ogl_buf_deinit(Ogl_Buf *buf) {
   if (buf && buf->impl_state) {
     glDeleteBuffers(1, &buf->impl_state);
   }
-  return (buf != NULL);
 }
 
 static uint32_t ogl_data_get_count(Ogl_Data_Type type) {
@@ -427,11 +425,29 @@ static GLuint ogl_to_gl_tex_filter(Ogl_Tex_Filter filter) {
   }
 }
 
+static bool ogl_tex_format_is_floating_point(Ogl_Tex_Format format) {
+  switch (format) {
+    case OGL_TEX_FORMAT_R32F:    return true;
+    case OGL_TEX_FORMAT_R8U:     return false;
+    case OGL_TEX_FORMAT_RGBA8U:  return false;
+    case OGL_TEX_FORMAT_RGBA32F: return true;
+  }
+}
 
-void ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Params params) {
+static GLint ogl_tex_format_to_gl_internal_format(Ogl_Tex_Format format) {
+  switch (format) {
+    case OGL_TEX_FORMAT_R32F:    return GL_LUMINANCE;
+    case OGL_TEX_FORMAT_R8U:     return GL_LUMINANCE;
+    case OGL_TEX_FORMAT_RGBA8U:  return GL_RGBA;
+    case OGL_TEX_FORMAT_RGBA32F: return GL_RGBA;
+  }
+}
+
+bool ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Format format, Ogl_Tex_Params params) {
   tex->params = params;
   tex->width = w;
   tex->height = h;
+  tex->format = format;
 
   GLuint texture_id;
   glGenTextures(1, &texture_id);
@@ -442,21 +458,31 @@ void ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Params params) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, ogl_to_gl_tex_filter(tex->params.min_filter));
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, ogl_to_gl_tex_filter(tex->params.mag_filter));
 
-  GLint internal_format = (params.is_depth) ? GL_DEPTH_COMPONENT : GL_RGBA;
-  // TODO: what about floating point render target attachments?
-  GLenum type = (params.is_depth) ? GL_FLOAT : GL_UNSIGNED_BYTE;
-  glTexImage2D(GL_TEXTURE_2D, 0, internal_format, w, h, 0, internal_format, type, data);
+  bool is_floating_point = ogl_tex_format_is_floating_point(tex->format);
+  GLenum type = (is_floating_point) ? GL_FLOAT : GL_UNSIGNED_BYTE;
+  type = (params.is_depth) ? GL_UNSIGNED_INT_24_8 : type;
 
-  glGenerateMipmap(GL_TEXTURE_2D);
+  GLint internal_format = ogl_tex_format_to_gl_internal_format(tex->format);
+  internal_format = (params.is_depth) ? GL_DEPTH24_STENCIL8 : internal_format;
+
+  GLenum image_format = internal_format;
+  image_format = (params.is_depth) ? GL_DEPTH_STENCIL: image_format;
+
+  glTexImage2D(GL_TEXTURE_2D, 0, internal_format, w, h, 0, image_format, type, data);
+
+  if (params.generate_mips) {
+    glGenerateMipmap(GL_TEXTURE_2D);
+  }
+
   tex->impl_state = texture_id;
-
-  // TODO: remove this make tex_init a bool function (or b32)
   assert(tex->impl_state);
+
+  return (tex->impl_state != 0);
 }
 
-Ogl_Tex ogl_tex_make(u8 *data, u32 w, u32 h, Ogl_Tex_Params params) {
+Ogl_Tex ogl_tex_make(u8 *data, u32 w, u32 h, Ogl_Tex_Format format, Ogl_Tex_Params params) {
   Ogl_Tex tex = {};
-  ogl_tex_init(&tex, data, w, h, params);
+  ogl_tex_init(&tex, data, w, h, format, params);
   return tex;
 }
 
@@ -465,7 +491,7 @@ void ogl_tex_deinit(Ogl_Tex *tex) {
   tex->impl_state = 0;
 }
 
-void ogl_render_target_init(Ogl_Render_Target *rt, u32 w, u32 h, u32 attachment_count, bool add_depth) {
+void ogl_render_target_init(Ogl_Render_Target *rt, u32 w, u32 h, u32 attachment_count, Ogl_Tex_Format format, bool add_depth) {
   assert(attachment_count <= OGL_MAX_RENDER_TARGET_ATTACHMENTS);
 
   rt->width = w;
@@ -478,13 +504,13 @@ void ogl_render_target_init(Ogl_Render_Target *rt, u32 w, u32 h, u32 attachment_
   glBindFramebuffer(GL_FRAMEBUFFER, rt->impl_state);
 
   for (u32 attachment_idx = 0; attachment_idx < attachment_count; ++attachment_idx) {
-    rt->attachments[attachment_idx] = ogl_tex_make(NULL, rt->width, rt->height, (Ogl_Tex_Params){});
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + attachment_idx, rt->attachments[attachment_idx].impl_state, 0);
+    rt->attachments[attachment_idx] = ogl_tex_make(NULL, rt->width, rt->height, format, (Ogl_Tex_Params){});
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + attachment_idx, GL_TEXTURE_2D, rt->attachments[attachment_idx].impl_state, 0);
   }
 
   if (add_depth) {
-    rt->depth_attachment = ogl_tex_make(NULL, rt->width, rt->height, (Ogl_Tex_Params){.is_depth = true,});
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, rt->depth_attachment.impl_state, 0);
+    rt->depth_attachment = ogl_tex_make(NULL, rt->width, rt->height, OGL_TEX_FORMAT_R32F,(Ogl_Tex_Params){.is_depth = true,});
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, rt->depth_attachment.impl_state, 0);
   }
 
   GLenum draw_buffers[OGL_MAX_RENDER_TARGET_ATTACHMENTS];
@@ -498,9 +524,9 @@ void ogl_render_target_init(Ogl_Render_Target *rt, u32 w, u32 h, u32 attachment_
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-Ogl_Render_Target ogl_render_target_make(u32 w, u32 h, u32 attachment_count, bool add_depth) {
+Ogl_Render_Target ogl_render_target_make(u32 w, u32 h, u32 attachment_count, Ogl_Tex_Format format, bool add_depth) {
   Ogl_Render_Target rt = {};
-  ogl_render_target_init(&rt, w, h, attachment_count, add_depth);
+  ogl_render_target_init(&rt, w, h, attachment_count, format, add_depth);
   return rt;
 }
 

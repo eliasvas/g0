@@ -67,4 +67,143 @@ INLINE f32  v4_dot(v4 a, v4 b)         { return (a.x*b.x)+(a.y*b.y)+(a.z*b.z)+(a
 INLINE f32  v4_len(v4 a)               { return sqrtf(v4_dot(a,a)); }
 INLINE v4   v4_norm(v4 a)              { f32 vl=v4_len(a);assert(!equalf(vl,0.0,0.01));return v4_divf(a,vl); }
 
+typedef union {
+    f32 col[3][3];//{x.x,x.y,x.z,0,y.x,y.y,y.z,0,z.x,z.y,z.z,0,p.x,p.y,p.z,1}
+    f32 raw[9]; //{x.x,x.y,x.z,0,y.x,y.y,y.z,0,z.x,z.y,z.z,0,p.x,p.y,p.z,1}
+} m3;
+
+typedef union {
+    f32 col[4][4];//{x.x,x.y,x.z,0,y.x,y.y,y.z,0,z.x,z.y,z.z,0,p.x,p.y,p.z,1}
+    f32 raw[16]; //{x.x,x.y,x.z,0,y.x,y.y,y.z,0,z.x,z.y,z.z,0,p.x,p.y,p.z,1}
+} m4;
+
+INLINE m4 m4d(f32 d) {
+    m4 res = {};
+    res.col[0][0] = d;
+    res.col[1][1] = d;
+    res.col[2][2] = d;
+    res.col[3][3] = d;
+    return res;
+}
+
+INLINE m4 m4_look_at(v3 eye, v3 center, v3 f_up) {
+    v3 f = v3_norm(v3_sub(center, eye));
+    v3 u = v3_norm(f_up);
+    v3 s = v3_norm(v3_cross(f, u));
+    u = v3_cross(s, f);
+
+    m4 res = m4d(1.0);
+    res.col[0][0] = s.x;
+    res.col[1][0] = s.y;
+    res.col[2][0] = s.z;
+    res.col[0][1] = u.x;
+    res.col[1][1] = u.y;
+    res.col[2][1] = u.z;
+    res.col[0][2] = -f.x;
+    res.col[1][2] = -f.y;
+    res.col[2][2] = -f.z;
+    res.col[3][0] = -v3_dot(s, eye);
+    res.col[3][1] = -v3_dot(u, eye);
+    res.col[3][2] = v3_dot(f, eye);
+    return res;
+}
+
+INLINE m4 m4_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
+    m4 res = {};
+    res.col[0][0] = 2.0f / (r - l);
+    res.col[1][1] = 2.0f / (t - b);
+    res.col[2][2] = 2.0f / (n - f);
+    res.col[3][3] = 1.0f;
+    res.col[3][0] = (l + r) / (l - r);
+    res.col[3][1] = (b + t) / (b - t);
+    res.col[3][2] = (f + n) / (n - f);
+    return res;
+}
+
+INLINE v3 m4_extract_pos(m4 m) {
+    return v3m(m.col[3][0],m.col[3][1],m.col[3][2]);
+}
+
+INLINE m4 m4_scale(v3 s) {
+    m4 res = m4d(1.0f);
+    res.col[0][0] = s.x;
+    res.col[1][1] = s.y;
+    res.col[2][2] = s.z;
+    return res;
+}
+
+INLINE m4 m4_translate(v3 t) {
+    m4 res = m4d(1.0f);
+    res.col[3][0] = t.x;
+    res.col[3][1] = t.y;
+    res.col[3][2] = t.z;
+    return res;
+}
+
+INLINE m4 m4_mult(m4 l, m4 r) {
+    m4 res = m4d(1.0f);
+    for (u32 col = 0; col < 4; col+=1)
+    {
+        for (u32 row = 0; row < 4; row+=1)
+        {
+            f32 sum = 0;
+            for (u32 current_index = 0; current_index < 4; ++current_index)
+            {
+                sum += (f32)l.col[current_index][row] * (f32)r.col[col][current_index];
+            }
+            res.col[col][row] = sum;
+        }
+    }
+    return res;
+}
+INLINE v4 m4_multv(m4 mat, v4 vec) {
+    v4 res;
+    s32 cols, rows;
+    for(rows = 0; rows < 4; ++rows)
+    {
+        f32 s = 0;
+        for(cols = 0; cols < 4; ++cols)
+        {
+            s += mat.col[cols][rows] * vec.raw[cols];
+        }
+        res.raw[rows] = s;
+    }
+    return (res);
+}
+
+INLINE m4 m4_inv(m4 m) {
+    f32 det;
+    m4 inv, inv_out;
+    s32 i;
+
+    inv.raw[0] = m.raw[5] * m.raw[10] * m.raw[15] - m.raw[5]  * m.raw[11] * m.raw[14] - m.raw[9]  * m.raw[6]  * m.raw[15] + m.raw[9]  * m.raw[7]  * m.raw[14] + m.raw[13] * m.raw[6]  * m.raw[11] - m.raw[13] * m.raw[7]  * m.raw[10];
+    inv.raw[4] = -m.raw[4] * m.raw[10] * m.raw[15] + m.raw[4]  * m.raw[11] * m.raw[14] + m.raw[8]  * m.raw[6]  * m.raw[15] - m.raw[8]  * m.raw[7]  * m.raw[14] - m.raw[12] * m.raw[6]  * m.raw[11] + m.raw[12] * m.raw[7]  * m.raw[10];
+    inv.raw[8] = m.raw[4] * m.raw[9] * m.raw[15] - m.raw[4]  * m.raw[11] * m.raw[13] - m.raw[8]  * m.raw[5] * m.raw[15] + m.raw[8]  * m.raw[7] * m.raw[13] + m.raw[12] * m.raw[5] * m.raw[11] - m.raw[12] * m.raw[7] * m.raw[9];
+    inv.raw[12] = -m.raw[4] * m.raw[9] * m.raw[14] + m.raw[4]  * m.raw[10] * m.raw[13] + m.raw[8]  * m.raw[5] * m.raw[14] - m.raw[8]  * m.raw[6] * m.raw[13] - m.raw[12] * m.raw[5] * m.raw[10] + m.raw[12] * m.raw[6] * m.raw[9];
+    inv.raw[1] = -m.raw[1] * m.raw[10] * m.raw[15] + m.raw[1]  * m.raw[11] * m.raw[14] + m.raw[9]  * m.raw[2] * m.raw[15] - m.raw[9]  * m.raw[3] * m.raw[14] - m.raw[13] * m.raw[2] * m.raw[11] + m.raw[13] * m.raw[3] * m.raw[10];
+    inv.raw[5] = m.raw[0] * m.raw[10] * m.raw[15] - m.raw[0]  * m.raw[11] * m.raw[14] - m.raw[8]  * m.raw[2] * m.raw[15] + m.raw[8]  * m.raw[3] * m.raw[14] + m.raw[12] * m.raw[2] * m.raw[11] - m.raw[12] * m.raw[3] * m.raw[10];
+    inv.raw[9] = -m.raw[0] * m.raw[9] * m.raw[15] + m.raw[0]  * m.raw[11] * m.raw[13] + m.raw[8]  * m.raw[1] * m.raw[15] - m.raw[8]  * m.raw[3] * m.raw[13] - m.raw[12] * m.raw[1] * m.raw[11] + m.raw[12] * m.raw[3] * m.raw[9];
+    inv.raw[13] = m.raw[0] * m.raw[9] * m.raw[14] - m.raw[0]  * m.raw[10] * m.raw[13] - m.raw[8]  * m.raw[1] * m.raw[14] + m.raw[8]  * m.raw[2] * m.raw[13] + m.raw[12] * m.raw[1] * m.raw[10] - m.raw[12] * m.raw[2] * m.raw[9];
+    inv.raw[2] = m.raw[1] * m.raw[6] * m.raw[15] - m.raw[1]  * m.raw[7] * m.raw[14] - m.raw[5]  * m.raw[2] * m.raw[15] + m.raw[5]  * m.raw[3] * m.raw[14] + m.raw[13] * m.raw[2] * m.raw[7] - m.raw[13] * m.raw[3] * m.raw[6];
+    inv.raw[6] = -m.raw[0] * m.raw[6] * m.raw[15] + m.raw[0]  * m.raw[7] * m.raw[14] + m.raw[4]  * m.raw[2] * m.raw[15] - m.raw[4]  * m.raw[3] * m.raw[14] - m.raw[12] * m.raw[2] * m.raw[7] + m.raw[12] * m.raw[3] * m.raw[6];
+    inv.raw[10] = m.raw[0] * m.raw[5] * m.raw[15] - m.raw[0]  * m.raw[7] * m.raw[13] - m.raw[4]  * m.raw[1] * m.raw[15] + m.raw[4]  * m.raw[3] * m.raw[13] + m.raw[12] * m.raw[1] * m.raw[7] - m.raw[12] * m.raw[3] * m.raw[5];
+    inv.raw[14] = -m.raw[0] * m.raw[5] * m.raw[14] + m.raw[0]  * m.raw[6] * m.raw[13] + m.raw[4]  * m.raw[1] * m.raw[14] - m.raw[4]  * m.raw[2] * m.raw[13] - m.raw[12] * m.raw[1] * m.raw[6] + m.raw[12] * m.raw[2] * m.raw[5];
+    inv.raw[3] = -m.raw[1] * m.raw[6] * m.raw[11] + m.raw[1] * m.raw[7] * m.raw[10] + m.raw[5] * m.raw[2] * m.raw[11] - m.raw[5] * m.raw[3] * m.raw[10] - m.raw[9] * m.raw[2] * m.raw[7] + m.raw[9] * m.raw[3] * m.raw[6];
+    inv.raw[7] = m.raw[0] * m.raw[6] * m.raw[11] - m.raw[0] * m.raw[7] * m.raw[10] - m.raw[4] * m.raw[2] * m.raw[11] + m.raw[4] * m.raw[3] * m.raw[10] + m.raw[8] * m.raw[2] * m.raw[7] - m.raw[8] * m.raw[3] * m.raw[6];
+    inv.raw[11] = -m.raw[0] * m.raw[5] * m.raw[11] + m.raw[0] * m.raw[7] * m.raw[9] + m.raw[4] * m.raw[1] * m.raw[11] - m.raw[4] * m.raw[3] * m.raw[9] - m.raw[8] * m.raw[1] * m.raw[7] + m.raw[8] * m.raw[3] * m.raw[5];
+    inv.raw[15] = m.raw[0] * m.raw[5] * m.raw[10] - m.raw[0] * m.raw[6] * m.raw[9] - m.raw[4] * m.raw[1] * m.raw[10] + m.raw[4] * m.raw[2] * m.raw[9] + m.raw[8] * m.raw[1] * m.raw[6] - m.raw[8] * m.raw[2] * m.raw[5];
+
+    det = m.raw[0] * inv.raw[0] + m.raw[1] * inv.raw[4] + m.raw[2] * inv.raw[8] + m.raw[3] * inv.raw[12];
+
+    if (det == 0) //in case the matrix is non-invertible
+        return m4d(0.f);
+
+    det = 1.f / det;
+
+    for (i = 0; i < 16; ++i)
+        inv_out.raw[i] = inv.raw[i] * det;
+
+    return inv_out;
+}
+
 #endif

@@ -150,3 +150,7 @@ u64 platform_read_cpu_freq() {
   return SDL_GetPerformanceFrequency();
 }
 
+f64 platform_get_time() {
+  return (f64)SDL_GetTicksNS() / 1000000000.0;
+}
+

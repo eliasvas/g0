@@ -14,6 +14,7 @@ const u8 font_data[] = {
 // Forward Declarations, I don't like this.. @FIXME
 typedef struct { u8 *data; u64 width; u64 height; } Platform_Image_Data;
 Platform_Image_Data platform_load_image_bytes_as_rgba(const char *filepath);
+f64 platform_get_time();
 
 const char* off_vs_source = R"(#version 300 es
 precision highp float;
@@ -53,13 +54,14 @@ layout(location = 0) out vec4 out_color;
 layout(location = 1) out vec4 out_color2;
 in vec3 f_color;
 in vec2 f_tc;
-layout (std140) uniform UboExample { float modifier; float pad0; float pad1; float pad2;};
+layout (std140) uniform UboExample { vec4 ubo_tc; };
 
 uniform sampler2D tex;
 uniform sampler2D tex2;
 void main() {
-  out_color = vec4(f_color, 1.0f)/20.0 + modifier * texture(tex, f_tc);
-  out_color = vec4(f_color, 1.0f)/20.0 + modifier * (texture(tex, f_tc) + texture(tex2, f_tc))/2.0;
+  vec2 real_tc = ubo_tc.xy + f_tc * ubo_tc.zw;
+  out_color = texture(tex, real_tc);
+  out_color2 = vec4(f_color, 1.0) * texture(tex, f_tc);
 }
 
 )";
@@ -96,10 +98,10 @@ void game_init(void) {
       [0] = { .name = "UboExample", .buffer = ogl_buf_make(OGL_BUF_KIND_UNIFORM, OGL_BUF_HINT_DYNAMIC, (f32[]) { 0.9, 0,0,0 }, 1, sizeof(f32)*4), .start_offset = 0, .size = sizeof(float)*4 },
     },
     .textures = {
-      [0] = { .name = "tex", .tex = ogl_tex_make(image.data, image.width, image.height, (Ogl_Tex_Params){}),},
-      [1] = { .name = "tex2", .tex = ogl_tex_make((u8[]){200,40,40,255}, 1,1, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT}),},
+      [0] = { .name = "tex", .tex = ogl_tex_make(image.data, image.width, image.height, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT}),},
+      [1] = { .name = "tex2", .tex = ogl_tex_make((u8[]){200,40,40,255}, 1,1, OGL_TEX_FORMAT_R8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT}),},
     },
-    .rt = ogl_render_target_make(800, 600, 2, true),
+    .rt = ogl_render_target_make(800, 600, 2, OGL_TEX_FORMAT_RGBA8U, true),
     .dyn_state = (Ogl_Dyn_State){
       .viewport = {0,0,800,600},
     }
@@ -118,9 +120,23 @@ void game_init(void) {
 }
 
 // TODO: make a game.h -> make a Game_Event thingy with SLL -> pass to update
-void game_update(float dt) { }
+void game_update(float dt) {
+
+#define SIZE_X (1.0/16.0)
+#define SIZE_Y (1.0/10.0)
+
+  f64 ts = platform_get_time()*2;
+  u32 xidx = (u32)ts % 16;
+  u32 yidx = (u32)ts / 10;
+
+  v4 tc = v4m(SIZE_X*xidx, SIZE_Y*yidx, SIZE_X, SIZE_Y);
+  ogl_buf_update(&rbundle.ubos[0].buffer, 0, &tc, 1, sizeof(v4));
+
+}
 
 void game_render(void) {
+  // update rbundle tcs
+
   ogl_clear((Ogl_Color){0.2,0.2,0.25,1.0});
   ogl_render_bundle_draw(&rbundle, OGL_PRIM_TYPE_TRIANGLE_FAN, 4, 1);
   ogl_render_bundle_draw(&full_quad_bundle, OGL_PRIM_TYPE_TRIANGLE_FAN, 3, 1);
