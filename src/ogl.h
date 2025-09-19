@@ -7,7 +7,6 @@
 // TODO: Make an API to begin..end drawing, for when we want to draw many stuff with same render bundle state
 // TODO: Maybe we should have views to buffers instead of actual ones right?
 // TODO: Make a OGL_NO_CRT and act accordingly.. maybe have NO_CRT the default
-// TODO: Compute shader support
 
 
 // https://www.3dgep.com/forward-plus/

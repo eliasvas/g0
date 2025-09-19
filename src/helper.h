@@ -57,6 +57,7 @@ static f32 F32_MIN_POS = 1.175494351e-38F;
 #define align8(val) align_pow2(val,8)
 #define align16(val) align_pow2(val,16)
 #define align32(val) align_pow2(val,32)
+#define align64(val) align_pow2(val,64)
 #define equalf(a, b, epsilon) (fabs(b - a) <= epsilon)
 #define maximum(a, b) ((a) > (b) ? (a) : (b))
 #define minimum(a, b) ((a) < (b) ? (a) : (b))
@@ -65,6 +66,9 @@ static f32 F32_MIN_POS = 1.175494351e-38F;
 #define is_pow2(x) ((x & (x - 1)) == 0)
 #define array_count(a) (sizeof(a) / sizeof((a)[0]))
 #define signof(x) ((x) > 0 ? 1 : ((x) < 0 ? -1 : 0))
+
+#define UINT_FROM_PTR(ptr) ((u64)ptr)
+#define PTR_FROM_UINT(num) ((char*)num)
 
 //////////////////////////////
 // Platform Specific Defines

@@ -97,6 +97,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   glewInit();
 
   SDL_Log("OpenGL version: %s\n", glGetString(GL_VERSION));
+  SDL_Log("Renderer: %s\n", glGetString(GL_RENDERER));
   SDL_Log("GLSL version: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
   SDL_GL_SetSwapInterval(1);
@@ -124,10 +125,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   game_render();
 
   SDL_GL_SwapWindow(sdl_state->window);
-  u64 frame_end = SDL_GetTicks();
-  sdl_state->dt = (frame_end - sdl_state->frame_start) / 1000.0;
+  u64 frame_end = SDL_GetTicksNS();
+  sdl_state->dt = (frame_end - sdl_state->frame_start) / 1000000000.0;
   //printf("fps=%f begin=%f end=%f\n", 1.0/sdl_state->dt, (f32)sdl_state->frame_start, (f32)frame_end);
-  sdl_state->frame_start = SDL_GetTicks();
+  sdl_state->frame_start = SDL_GetTicksNS();
 
   return SDL_APP_CONTINUE;
 }

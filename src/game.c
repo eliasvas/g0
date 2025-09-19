@@ -1,4 +1,5 @@
 #include "helper.h"
+#include "arena.h"
 #include "math3d.h"
 #include "ogl.h"
 
@@ -117,6 +118,23 @@ void game_init(void) {
     }
   };
 
+  // Arena test
+  Arena* test_arena = arena_make(MB(256));
+  u32 elem_count = 500;
+
+  f32 *my_floats = arena_push(test_arena, sizeof(float)*elem_count);
+  assert(my_floats);
+  for (u32 i = 0; i < elem_count; ++i) { my_floats[i] = (f32)i; }
+
+  f32 *my_floats2 = arena_push(test_arena, sizeof(float)*elem_count*2);
+  assert(my_floats2);
+  for (u32 i = 0; i < elem_count*2; ++i) { my_floats2[i] = (f32)i; }
+
+  Ogl_Render_Bundle *my_unused_render_bundle = arena_push_struct(test_arena, Ogl_Render_Bundle);
+  assert(my_unused_render_bundle);
+
+  arena_clear(test_arena);
+  arena_destroy(test_arena);
 }
 
 // TODO: make a game.h -> make a Game_Event thingy with SLL -> pass to update
@@ -139,6 +157,6 @@ void game_render(void) {
 
   ogl_clear((Ogl_Color){0.2,0.2,0.25,1.0});
   ogl_render_bundle_draw(&rbundle, OGL_PRIM_TYPE_TRIANGLE_FAN, 4, 1);
-  ogl_render_bundle_draw(&full_quad_bundle, OGL_PRIM_TYPE_TRIANGLE_FAN, 3, 1);
+  ogl_render_bundle_draw(&full_quad_bundle, OGL_PRIM_TYPE_TRIANGLE, 3, 1);
 }
 

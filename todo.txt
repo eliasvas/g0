@@ -1,0 +1,6 @@
+- 2D Renderer (with camera and stuff)
+- Font Loading/Rendering
+- GUI system
+- Game_State
+- Entity/World representation
+- Audio mixer (based on SDL_Audio, no SDL_Mixer)
