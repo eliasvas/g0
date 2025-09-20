@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "game.h"
 #include "helper.h"
 #include "profiler.h"
 
@@ -17,10 +18,6 @@
 // we need this to port to WASM sadly, because WASM programs are event based, no main loops :(
 #define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL_main.h>
-
-extern void game_init(void);
-extern void game_update(float dt);
-extern void game_render(void);
 
 typedef struct {
   u8 *data;
@@ -49,6 +46,8 @@ typedef struct {
 
   f64 dt;
   u64 frame_start;
+
+  Game_State gs;
 } SDL_State;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
@@ -81,7 +80,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   M_ZERO_STRUCT(sdl_state);
   *appstate = sdl_state;
 
-  sdl_state->window = SDL_CreateWindow("g0", 800, 600, SDL_WINDOW_OPENGL);
+  // TODO: Maybe there should be some configuration file for stuff like this and profiling and stuff
+#define DEFAULT_WIN_DIM_X 800
+#define DEFAULT_WIN_DIM_Y 600
+
+  sdl_state->window = SDL_CreateWindow("g0", DEFAULT_WIN_DIM_X, DEFAULT_WIN_DIM_Y, SDL_WINDOW_OPENGL);
   if (!sdl_state->window) {
     SDL_Log("Could not create window");
   }
@@ -100,18 +103,26 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   SDL_Log("Renderer: %s\n", glGetString(GL_RENDERER));
   SDL_Log("GLSL version: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
+  SDL_SetWindowResizable(sdl_state->window, true);
   SDL_GL_SetSwapInterval(1);
-  game_init();
+
+  sdl_state->gs.persistent_arena = arena_make(GB(1));
+  sdl_state->gs.frame_arena = arena_make(MB(256));
+  sdl_state->gs.screen_dim = v2m(DEFAULT_WIN_DIM_X, DEFAULT_WIN_DIM_Y);
+  game_init(&sdl_state->gs);
 
   return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
   TIME_FUNC;
+  SDL_State *sdl_state = (SDL_State*)appstate;
 
-  //SDL_State *sdl_state = (SDL_State*)appstate;
   if (event->type == SDL_EVENT_QUIT) {
       return SDL_APP_SUCCESS;
+  } else if (event->type == SDL_EVENT_WINDOW_RESIZED) {
+    // Update Game_State with new window dimensions
+    sdl_state->gs.screen_dim = v2m(event->window.data1, event->window.data2);
   }
 
   return SDL_APP_CONTINUE;
@@ -119,16 +130,22 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
   TIME_FUNC;
-
   SDL_State *sdl_state = (SDL_State*)appstate;
-  game_update(sdl_state->dt);
-  game_render();
+  // Perform update and render
+  game_update(&sdl_state->gs, sdl_state->dt);
+  game_render(&sdl_state->gs);
 
+  // Swap the window
   SDL_GL_SwapWindow(sdl_state->window);
+  
+  // Perform timings
   u64 frame_end = SDL_GetTicksNS();
   sdl_state->dt = (frame_end - sdl_state->frame_start) / 1000000000.0;
   //printf("fps=%f begin=%f end=%f\n", 1.0/sdl_state->dt, (f32)sdl_state->frame_start, (f32)frame_end);
   sdl_state->frame_start = SDL_GetTicksNS();
+
+  // Clear the per-frame arena
+  arena_clear(sdl_state->gs.frame_arena);
 
   return SDL_APP_CONTINUE;
 }

@@ -268,4 +268,8 @@ static f32 F32_MIN_POS = 1.175494351e-38F;
 #define M_ZERO_STRUCT(p)  M_ZERO((p), sizeof(*(p)))
 #define M_ZERO_ARRAY(a)  M_ZERO((a), sizeof(a))
 
+// FIXME: NO STD LIBRARY PLEASE
+#define M_COPY(dest, src, n) memcpy(dest, src,n);
+
+
 #endif

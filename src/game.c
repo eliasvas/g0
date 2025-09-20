@@ -1,7 +1,6 @@
-#include "helper.h"
-#include "arena.h"
-#include "math3d.h"
+#include "game.h"
 #include "ogl.h"
+#include "rend2d.h"
 
 // Comment this out if not protoyping
 #include <GL/glew.h>
@@ -67,57 +66,14 @@ void main() {
 
 )";
 
-global_var Ogl_Render_Bundle rbundle = {};
+//global_var Ogl_Render_Bundle rbundle = {};
 
-global_var Ogl_Render_Bundle full_quad_bundle = {};
+//global_var Ogl_Render_Bundle full_quad_bundle = {};
 
-void game_init(void) {
+void game_init(Game_State *gs) {
   ogl_init(); // To create the bullshit empty VAO opengl side, nothing else
 
-  Platform_Image_Data image = platform_load_image_bytes_as_rgba("data/microgue.png");
-  assert(image.width > 0); assert(image.height > 0);assert(image.data != nullptr);
-
-
-  rbundle = (Ogl_Render_Bundle){
-    .sp = ogl_shader_make(vs_source, fs_source),
-    .vbos = {
-      [0] = {
-        .buffer = ogl_buf_make(OGL_BUF_KIND_VERTEX, OGL_BUF_HINT_STATIC, (f32[]) {
-              -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f,    // top left
-              -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-               0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-               0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-            }, 4, 8*sizeof(f32)),
-        .vattribs = {
-          [0] = { .location = 0, .type = OGL_DATA_TYPE_VEC3, .offset = 0 },
-          [1] = { .location = 1, .type = OGL_DATA_TYPE_VEC3, .offset = 3*sizeof(f32) },
-          [2] = { .location = 2, .type = OGL_DATA_TYPE_VEC2, .offset = 6*sizeof(f32) },
-        },
-      },
-    },
-    .ubos = {
-      [0] = { .name = "UboExample", .buffer = ogl_buf_make(OGL_BUF_KIND_UNIFORM, OGL_BUF_HINT_DYNAMIC, (f32[]) { 0.9, 0,0,0 }, 1, sizeof(f32)*4), .start_offset = 0, .size = sizeof(float)*4 },
-    },
-    .textures = {
-      [0] = { .name = "tex", .tex = ogl_tex_make(image.data, image.width, image.height, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT}),},
-      [1] = { .name = "tex2", .tex = ogl_tex_make((u8[]){200,40,40,255}, 1,1, OGL_TEX_FORMAT_R8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT}),},
-    },
-    .rt = ogl_render_target_make(800, 600, 2, OGL_TEX_FORMAT_RGBA8U, true),
-    .dyn_state = (Ogl_Dyn_State){
-      .viewport = {0,0,800,600},
-    }
-  };
-
-  full_quad_bundle = (Ogl_Render_Bundle){
-    .sp = ogl_shader_make(off_vs_source, off_fs_source),
-    .textures = {
-      [0] = { .name = "tex", .tex = rbundle.rt.attachments[0],},
-    },
-    .dyn_state = (Ogl_Dyn_State){
-      .viewport = {0,0,800,600},
-    }
-  };
-
+#if 0
   // Arena test
   Arena* test_arena = arena_make(MB(256));
   u32 elem_count = 500;
@@ -135,11 +91,14 @@ void game_init(void) {
 
   arena_clear(test_arena);
   arena_destroy(test_arena);
+#endif 
+
 }
 
 // TODO: make a game.h -> make a Game_Event thingy with SLL -> pass to update
-void game_update(float dt) {
+void game_update(Game_State *gs, float dt) {
 
+  /*
 #define SIZE_X (1.0/16.0)
 #define SIZE_Y (1.0/10.0)
 
@@ -150,13 +109,34 @@ void game_update(float dt) {
   v4 tc = v4m(SIZE_X*xidx, SIZE_Y*yidx, SIZE_X, SIZE_Y);
   ogl_buf_update(&rbundle.ubos[0].buffer, 0, &tc, 1, sizeof(v4));
 
+
+  // TODO: Maybe this should be a function? or no, because semantic compression
+  v2 screen_dim = gs->screen_dim;
+  if ((s32)screen_dim.x != (s32)rbundle.rt.width || (s32)screen_dim.y != (s32)rbundle.rt.height) {
+    ogl_render_target_deinit(&rbundle.rt);
+    rbundle.rt = ogl_render_target_make(gs->screen_dim.x, gs->screen_dim.y, 2, OGL_TEX_FORMAT_RGBA8U, true);
+    assert(gs->screen_dim.x);
+    assert(gs->screen_dim.y);
+  }
+  */
+
 }
 
-void game_render(void) {
-  // update rbundle tcs
-
+void game_render(Game_State *gs) {
   ogl_clear((Ogl_Color){0.2,0.2,0.25,1.0});
-  ogl_render_bundle_draw(&rbundle, OGL_PRIM_TYPE_TRIANGLE_FAN, 4, 1);
-  ogl_render_bundle_draw(&full_quad_bundle, OGL_PRIM_TYPE_TRIANGLE, 3, 1);
+
+  Rend2D* rend = rend2d_begin(gs->frame_arena, gs->screen_dim);
+  assert(rend);
+  rend2d_push_quad(rend, (Rend_Quad) {
+      .src_rect = (Rend_Rect){0,0,100,100},
+      .dst_rect = (Rend_Rect){0,0,0.1,0.2},
+      .color = (Rend_Color){1,1,1,1},
+  });
+
+  //rend2d_push_quad(rend, (Rend_Quad) {});
+  //rend2d_push_quad(rend, (Rend_Quad) {});
+  rend2d_end(rend);
+
 }
+
 

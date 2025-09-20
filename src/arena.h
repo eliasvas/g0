@@ -30,7 +30,7 @@ static void* arena_push_nz(Arena *arena, u64 size_in_bytes) {
   if (arena->current + size_in_bytes > arena->committed) {
     u64 extra_bytes_needed = size_in_bytes - (arena->committed - arena->current);
     u64 chunks_needed = (extra_bytes_needed/ARENA_DEFAULT_CHUNK_SIZE) + 1;
-    M_COMMIT(PTR_FROM_UINT(UINT_FROM_PTR(arena->backing_memory) + arena->committed), chunks_needed);
+    M_COMMIT(PTR_FROM_UINT(UINT_FROM_PTR(arena->backing_memory) + arena->committed), chunks_needed*ARENA_DEFAULT_CHUNK_SIZE);
     arena->committed += chunks_needed * ARENA_DEFAULT_CHUNK_SIZE;
   }
   // Align forward 'current' after the chunk allocations for return, and increase 'current' to point to free to use memory
@@ -55,13 +55,17 @@ static void arena_pop(Arena *arena, u64 bytes_to_pop) {
   arena->current -= bytes_to_pop;
 }
 
-#define arena_push_struct(arena, s) arena_push(arena, sizeof(s))
-#define arena_push_struct_nz(arena, s) arena_push_nz(arena, sizeof(s))
+#define arena_push_array(arena, s, count) arena_push((arena), sizeof(s)*(count))
+#define arena_push_array_nz(arena, s, count) arena_push_nz((arena), sizeof(s)*(count))
+
+#define arena_push_struct(arena, s) arena_push_array(arena, s, 1)
+#define arena_push_struct_nz(arena, s) arena_push_array_nz(arena, s, 1)
+
 
 // TODO: Maybe we should also mem_release if we crossed committed chunk boundaries
 static void arena_clear(Arena *arena) {
-  //arena->current = 0;
-  arena_pop(arena, arena->current);
+  arena->current = sizeof(Arena);
+  arena_align_forward(arena);
 }
 
 static Arena* arena_make_with_alignment(u64 size_in_bytes, u64 alignment) {
