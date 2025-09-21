@@ -171,6 +171,16 @@ INLINE v4 m4_multv(m4 mat, v4 vec) {
     return (res);
 }
 
+INLINE m4 m4_transpose(m4 m) {
+  m4 res = {};
+  for (u32 col_idx = 0; col_idx < 4; ++col_idx) {
+    for (u32 row_idx = 0; row_idx < 4; ++row_idx) {
+      res.col[col_idx][row_idx] = m.col[row_idx][col_idx];
+    }
+  }
+  return res;
+}
+
 INLINE m4 m4_inv(m4 m) {
     f32 det;
     m4 inv, inv_out;
