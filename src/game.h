@@ -3,11 +3,15 @@
 #include "helper.h"
 #include "arena.h"
 #include "math3d.h"
+#include "ogl.h"
 
 typedef struct {
   Arena *persistent_arena; // For persistent allocations
   Arena *frame_arena; // For per-frame allocations
   v2 screen_dim;
+
+  Ogl_Tex atlas;
+  Ogl_Tex red;
 } Game_State;
 
 // Not sure if these should be exposed as we will load them via DLL in the future

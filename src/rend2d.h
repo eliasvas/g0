@@ -73,11 +73,18 @@ typedef struct {
   Rend_Quad_Chunk_List list;
   Rend_Tex_Array tex_array;
   Arena *arena;
-} Rend2D;
+} R2D;
 
+// TODO: make the trick with the macro for scale initialization
+typedef struct {
+  v2 offset;
+  v2 origin;
+  float zoom;
+  float rot_in_rad;
+} R2D_Cam;
 
-Rend2D* rend2d_begin(Arena *arena, v2 screen_dim);
-void rend2d_end(Rend2D *rend);
-void rend2d_push_quad(Rend2D *rend, Rend_Quad q);
+R2D* r2d_begin(Arena *arena, R2D_Cam *cam, v2 screen_dim);
+void r2d_end(R2D *rend);
+void r2d_push_quad(R2D *rend, Rend_Quad q);
 
 #endif

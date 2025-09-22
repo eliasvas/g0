@@ -2,6 +2,8 @@
 #include "ogl.h"
 #include "math3d.h"
 
+// TODO: WE SHOULD ENABLE multisampling ogl side! it should be a dynamic state right?
+
 // HMMMMMMM
 static Ogl_Render_Bundle batch_bundle = {};
 static Ogl_Tex white_tex = {};
@@ -21,17 +23,17 @@ layout(location=4) in int v_tex_slot;
 layout (std140) uniform BatchUbo { mat4 view_proj; };
 
 vec2 vertices[4] = vec2[](
+  vec2(-0.5,+0.5),
   vec2(-0.5,-0.5),
   vec2(+0.5,-0.5),
-  vec2(-0.5,+0.5),
   vec2(+0.5,+0.5)
 );
 
 vec2 tex_coords[4] = vec2[](
   vec2(0.0,0.0),
-  vec2(1.0,0.0),
   vec2(0.0,1.0),
-  vec2(1.0,1.0)
+  vec2(1.0,1.0),
+  vec2(1.0,0.0)
 );
 
 out vec4 f_color;
@@ -58,7 +60,7 @@ void main() {
 
   f_color = v_color;
   f_tex_slot = v_tex_slot;
-  f_tc = src_rect.xy + tex_coords[gl_VertexID] * src_rect.zw;
+  f_tc = src_rect.xy*vec2(1,-1) + tex_coords[gl_VertexID] * src_rect.zw - vec2(0, src_rect.w);
 }
 )";
 
@@ -100,6 +102,11 @@ void main() {
 /////////////////////
 // Actual Implementation
 /////////////////////
+
+static m4 r2d_cam_make_view_mat(R2D_Cam *cam) {
+  m4 rot = m4d(1.0); // FIXME: implement rotations!
+  return m4_mult(m4_translate(v3m(cam->offset.x, cam->offset.y, 0)),m4_mult(rot,m4_mult(m4_scale(v3m(cam->zoom, cam->zoom,0)), m4_translate(v3m(-cam->origin.x, -cam->origin.y,0)))));
+}
 
 static s64 rend_tex_array_try_add(Rend_Tex_Array *tarray, Ogl_Tex tex) {
   for (u64 tex_idx = 0; tex_idx < tarray->count; ++tex_idx) {
@@ -150,7 +157,7 @@ static Rend_Quad_Array rend_quad_chunk_list_to_array(Arena *arena, Rend_Quad_Chu
   return qa;
 }
 
-static void rend2d_flush(Rend2D *rend, Batch_Vertex *vertices, u64 count) {
+static void r2d_flush(R2D *rend, Batch_Vertex *vertices, u64 count) {
   // We set the correct texture for each slot, if not found, we just assign a dummy white texture for debug purposes
   char name_buf[REND_MAX_TEXTURES][64] = {};
   for (u64 tex_idx = 0; tex_idx < rend->tex_array.cap; ++tex_idx) {
@@ -163,12 +170,16 @@ static void rend2d_flush(Rend2D *rend, Batch_Vertex *vertices, u64 count) {
     }
   }
   ogl_buf_update(&batch_bundle.vbos[0].buffer, 0, vertices, count, sizeof(Batch_Vertex));
-  ogl_render_bundle_draw(&batch_bundle, OGL_PRIM_TYPE_TRIANGLE_STRIP, 4, count);
+  ogl_render_bundle_draw(&batch_bundle, OGL_PRIM_TYPE_TRIANGLE_FAN, 4, count);
 }
 
-Rend2D* rend2d_begin(Arena *arena, v2 screen_dim) {
+R2D* r2d_begin(Arena *arena, R2D_Cam *cam, v2 screen_dim) {
+  //m4 m = m4_ortho(0,screen_dim.x,0,screen_dim.y,-1,1);
+  m4 proj = m4_ortho(0,screen_dim.x,screen_dim.y,0,-1,1);
+  m4 view = r2d_cam_make_view_mat(cam);
+  m4 m = m4_mult(proj, view);
+
   if (batch_bundle.sp.impl_state == 0) {
-    m4 m = m4_ortho(0,screen_dim.x,0,screen_dim.y,-1,1);
     batch_bundle = (Ogl_Render_Bundle){
       .sp = ogl_shader_make(batch_vs, batch_fs),
       .vbos = {
@@ -194,9 +205,10 @@ Rend2D* rend2d_begin(Arena *arena, v2 screen_dim) {
     white_tex = ogl_tex_make((u8[]){255,255,255,255}, 1,1, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT});
   }
   batch_bundle.dyn_state.viewport = (Ogl_Rect){0,0,screen_dim.x,screen_dim.y};
+  ogl_buf_update(&batch_bundle.ubos[0].buffer, 0, &m, 1, sizeof(Batch_Vertex));
 
 
-  Rend2D *rend = arena_push_array(arena, Rend2D, 1);
+  R2D *rend = arena_push_array(arena, R2D, 1);
   rend->arena = arena;
 
   // initialize the tex array
@@ -207,7 +219,7 @@ Rend2D* rend2d_begin(Arena *arena, v2 screen_dim) {
   return rend;
 }
 
-void rend2d_end(Rend2D *rend) {
+void r2d_end(R2D *rend) {
   Rend_Quad_Array quads = rend_quad_chunk_list_to_array(rend->arena, &rend->list);
   Rend_Tex_Array textures = {};
   textures.count = 0;
@@ -235,7 +247,7 @@ void rend2d_end(Rend2D *rend) {
     vertex_idx+=1;
 
     if (vertex_idx > REND_MAX_INSTANCES || quad_idx+1 >= quads.count || !tex_added) {
-      rend2d_flush(rend, batch_vertices, vertex_idx);
+      r2d_flush(rend, batch_vertices, vertex_idx);
       // cleanup
       rend_tex_array_clear(&rend->tex_array);
       vertex_idx = 0;
@@ -244,9 +256,7 @@ void rend2d_end(Rend2D *rend) {
 
 }
 
-void rend2d_push_quad(Rend2D *rend, Rend_Quad q) {
+void r2d_push_quad(R2D *rend, Rend_Quad q) {
   rend_quad_chunk_list_push(rend->arena, &rend->list, 256, q);
 }
-
-
 
