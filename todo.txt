@@ -1,6 +1,6 @@
-- 2D Renderer (with camera and stuff)
+- Make a shadertoy-style thingy to generate shader effects, mainly will be used for backgrounds i imagine
+- Screen Shake / Screen Blur / Screen Pixelification
 - Font Loading/Rendering
 - GUI system
-- Game_State
 - Entity/World representation
 - Audio mixer (based on SDL_Audio, no SDL_Mixer)

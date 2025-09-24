@@ -128,6 +128,7 @@ typedef struct {
 typedef enum { 
   OGL_DYN_STATE_FLAG_SCISSOR    = (0x1 << 0),
   OGL_DYN_STATE_FLAG_DEPTH_TEST = (0x1 << 1),
+  OGL_DYN_STATE_FLAG_BLEND      = (0x1 << 2),
 } Ogl_Dyn_State_Flags;
 
 typedef struct {
@@ -608,6 +609,15 @@ static void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
   } else {
     glDisable(GL_DEPTH_TEST);
   }
+  if (bundle->dyn_state.flags & OGL_DYN_STATE_FLAG_BLEND) {
+    glEnable(GL_BLEND);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+  } else {
+    glDisable(GL_BLEND);
+  }
+
 }
 
 void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t instance_count) {

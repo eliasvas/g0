@@ -1,6 +1,6 @@
 #include "game.h"
 #include "ogl.h"
-#include "rend2d.h"
+#include "r2d.h"
 
 // Forward Declarations, I don't like this.. @FIXME
 typedef struct { u8 *data; u64 width; u64 height; } Platform_Image_Data;
@@ -28,31 +28,35 @@ void game_render(Game_State *gs) {
 
 #define ATLAS_SPRITES_X 16
 #define ATLAS_SPRITES_Y 10
-  R2D* fs_rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_in_rad = 0.0, }, gs->screen_dim);
-  r2d_push_quad(fs_rend, (Rend_Quad) {
-      .src_rect = (Rend_Rect){0,0,128,80},
-      .dst_rect = (Rend_Rect){0,0,gs->screen_dim.x,gs->screen_dim.y},
-      .color = (Rend_Color){1,1,1,1},
+  R2D* fs_rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, gs->screen_dim);
+  r2d_push_quad(fs_rend, (R2D_Quad) {
+      .src_rect = (R2D_Rect){0,0,128,80},
+      .dst_rect = (R2D_Rect){0,0,gs->screen_dim.x,gs->screen_dim.y},
+      .color = (R2D_Color){1,1,1,1},
       .tex = gs->atlas,
   });
   r2d_end(fs_rend);
 
-  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->screen_dim.x/2.0, gs->screen_dim.y/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_in_rad = 0.0,}, gs->screen_dim);
-  r2d_push_quad(rend, (Rend_Quad) {
-      .src_rect = (Rend_Rect){},
-      .dst_rect = (Rend_Rect){0,0,10,10},
-      .color = (Rend_Color){1,1,1,1},
-      .tex = gs->red,
-  });
   float speedup = 3.0;
   f64 ts = platform_get_time()*speedup;
+
+  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->screen_dim.x/2.0, gs->screen_dim.y/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts*(180.0/PI),}, gs->screen_dim);
+
+  r2d_push_quad(rend, (R2D_Quad) {
+      .src_rect = (R2D_Rect){},
+      .dst_rect = (R2D_Rect){0,0,10,10},
+      .color = (R2D_Color){1,1,1,0.8},
+      .tex = gs->red,
+      .rot_rad = ts,
+  });
   u32 xidx = (u32)ts % ATLAS_SPRITES_X;
   u32 yidx = (u32)ts / ATLAS_SPRITES_X;
-  r2d_push_quad(rend, (Rend_Quad) {
-      .src_rect = (Rend_Rect){xidx*8, yidx*8, 8,8},
-      .dst_rect = (Rend_Rect){1,1,8,8},
-      .color = (Rend_Color){1,1,1,1},
+  r2d_push_quad(rend, (R2D_Quad) {
+      .src_rect = (R2D_Rect){xidx*8, yidx*8, 8,8},
+      .dst_rect = (R2D_Rect){1,1,8,8},
+      .color = (R2D_Color){1,1,1,1.0},
       .tex = gs->atlas,
+      .rot_rad = ts,
   });
   r2d_end(rend);
 }

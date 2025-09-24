@@ -14,11 +14,11 @@
 
 typedef struct {
   f32 r,g,b,a;
-} Rend_Color;
+} R2D_Color;
 
 typedef struct {
   f32 x,y,w,h;
-} Rend_Rect;
+} R2D_Rect;
 
 
 typedef struct {
@@ -30,36 +30,36 @@ typedef struct {
 } Batch_Vertex;
 
 typedef struct {
-  Rend_Rect src_rect, dst_rect;
-  Rend_Color color;
+  R2D_Rect src_rect, dst_rect;
+  R2D_Color color;
   f32 rot_rad;
 
   // TODO: Maybe this isn't the best way to conduct business.. Ogl_Tex is just a view
   Ogl_Tex tex;
-} Rend_Quad;
+} R2D_Quad;
 
-typedef struct Rend_Quad_Chunk_Node Rend_Quad_Chunk_Node;
-struct Rend_Quad_Chunk_Node {
-  Rend_Quad_Chunk_Node *next;
-  Rend_Quad *arr;
+typedef struct R2D_Quad_Chunk_Node R2D_Quad_Chunk_Node;
+struct R2D_Quad_Chunk_Node {
+  R2D_Quad_Chunk_Node *next;
+  R2D_Quad *arr;
   u64 cap;
   u64 count;
 };
 
-typedef struct Rend_Quad_Chunk_List Rend_Quad_Chunk_List;
-struct Rend_Quad_Chunk_List {
+typedef struct R2D_Quad_Chunk_List R2D_Quad_Chunk_List;
+struct R2D_Quad_Chunk_List {
   // This is a Singly Linked-List Queue,
   // so we can access from the front i.e iterate array style
-  Rend_Quad_Chunk_Node *first;
-  Rend_Quad_Chunk_Node *last;
+  R2D_Quad_Chunk_Node *first;
+  R2D_Quad_Chunk_Node *last;
 
   u64 node_count;
   u64 quad_count;
 };
 
-typedef struct Rend_Quad_Array Rend_Quad_Array;
-struct Rend_Quad_Array {
-  Rend_Quad *arr;
+typedef struct R2D_Quad_Array R2D_Quad_Array;
+struct R2D_Quad_Array {
+  R2D_Quad *arr;
   u64 count;
 };
 
@@ -67,11 +67,11 @@ typedef struct {
   Ogl_Tex *textures;
   u64 count;
   u64 cap;
-} Rend_Tex_Array;
+} R2D_Tex_Array;
 
 typedef struct {
-  Rend_Quad_Chunk_List list;
-  Rend_Tex_Array tex_array;
+  R2D_Quad_Chunk_List list;
+  R2D_Tex_Array tex_array;
   Arena *arena;
 } R2D;
 
@@ -80,11 +80,12 @@ typedef struct {
   v2 offset;
   v2 origin;
   float zoom;
-  float rot_in_rad;
+  // TODO: make this rad?
+  float rot_deg;
 } R2D_Cam;
 
 R2D* r2d_begin(Arena *arena, R2D_Cam *cam, v2 screen_dim);
 void r2d_end(R2D *rend);
-void r2d_push_quad(R2D *rend, Rend_Quad q);
+void r2d_push_quad(R2D *rend, R2D_Quad q);
 
 #endif
