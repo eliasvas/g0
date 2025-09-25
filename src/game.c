@@ -1,5 +1,6 @@
 #include "game.h"
 #include "ogl.h"
+#include "font_util.h"
 #include "r2d.h"
 
 // Forward Declarations, I don't like this.. @FIXME
@@ -17,13 +18,15 @@ void game_init(Game_State *gs) {
   assert(image.height > 0);
   assert(image.data != nullptr);
   gs->atlas = ogl_tex_make(image.data, image.width, image.height, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT});
+  gs->font = font_util_load_default_atlas(gs->frame_arena, 128, 1024, 1024);
+
 }
 
 void game_update(Game_State *gs, float dt) {
 
 }
 
-void game_render(Game_State *gs) {
+void game_render(Game_State *gs, float dt) {
   ogl_clear((Ogl_Color){0.2,0.2,0.25,1.0});
 
 #define ATLAS_SPRITES_X 16
@@ -36,6 +39,28 @@ void game_render(Game_State *gs) {
       .tex = gs->atlas,
   });
   r2d_end(fs_rend);
+
+  // Debug draw some text! TODO: add scaling, pull this into a function yada yada
+  v2 pos = v2m(0,128);
+  R2D* text_rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, gs->screen_dim);
+  char text_to_draw[64];
+  sprintf(text_to_draw, "Hello There");
+  for (u32 i = 0; i < strlen(text_to_draw); ++i) {
+    u8 c = text_to_draw[i];
+    Glyph_Info metrics = gs->font.glyphs[c - gs->font.first_codepoint];
+    r2d_push_quad(text_rend, (R2D_Quad) {
+        .dst_rect = (R2D_Rect){pos.x+metrics.off.x, pos.y+metrics.off.y, metrics.r.w, metrics.r.h},
+        //.src_rect = (R2D_Rect){metrics.tc.x, metrics.tc.y, metrics.tc.w, metrics.tc.h},
+        .src_rect = (R2D_Rect){metrics.r.x, metrics.r.y, metrics.r.w, metrics.r.h},
+        .color = (R2D_Color){0.9,0.9,0.1,1},
+        .tex = gs->font.atlas,
+    });
+    pos.x += metrics.xadvance;
+  }
+
+  r2d_end(text_rend);
+
+
 
   float speedup = 3.0;
   f64 ts = platform_get_time()*speedup;
@@ -59,6 +84,6 @@ void game_render(Game_State *gs) {
       .rot_rad = ts,
   });
   r2d_end(rend);
-}
 
+}
 

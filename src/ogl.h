@@ -436,10 +436,24 @@ static bool ogl_tex_format_is_floating_point(Ogl_Tex_Format format) {
 
 static GLint ogl_tex_format_to_gl_internal_format(Ogl_Tex_Format format) {
   switch (format) {
-    case OGL_TEX_FORMAT_R32F:    return GL_LUMINANCE;
+    // TODO: Why do we have to do this? Isn't there a common way to express one component textures? read spec
+#if (ARCH_WASM64 || ARCH_WASM32)
     case OGL_TEX_FORMAT_R8U:     return GL_LUMINANCE;
+    case OGL_TEX_FORMAT_R32F:    return GL_LUMINANCE;
+#else
+    case OGL_TEX_FORMAT_R8U:     return GL_RED;
+    case OGL_TEX_FORMAT_R32F:    return GL_RED;
+#endif
     case OGL_TEX_FORMAT_RGBA8U:  return GL_RGBA;
     case OGL_TEX_FORMAT_RGBA32F: return GL_RGBA;
+  }
+}
+static GLint ogl_tex_format_component_num(Ogl_Tex_Format format) {
+  switch (format) {
+    case OGL_TEX_FORMAT_R32F:    return 1;
+    case OGL_TEX_FORMAT_R8U:     return 1;
+    case OGL_TEX_FORMAT_RGBA8U:  return 4;
+    case OGL_TEX_FORMAT_RGBA32F: return 4;
   }
 }
 
@@ -457,6 +471,18 @@ bool ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Format format, O
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, ogl_to_gl_wrap_mode(tex->params.wrap_r));
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, ogl_to_gl_tex_filter(tex->params.min_filter));
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, ogl_to_gl_tex_filter(tex->params.mag_filter));
+
+  if (ogl_tex_format_component_num(format) == 1) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_RED);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_RED);
+  }else{
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_RED);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_GREEN);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_BLUE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_ALPHA);
+  }
 
   bool is_floating_point = ogl_tex_format_is_floating_point(tex->format);
   GLenum type = (is_floating_point) ? GL_FLOAT : GL_UNSIGNED_BYTE;

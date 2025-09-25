@@ -185,7 +185,7 @@ R2D* r2d_begin(Arena *arena, R2D_Cam *cam, v2 screen_dim) {
       .sp = ogl_shader_make(batch_vs, batch_fs),
       .vbos = {
         [0] = {
-          .buffer = ogl_buf_make(OGL_BUF_KIND_VERTEX, OGL_BUF_HINT_STATIC,nullptr, REND_MAX_INSTANCES, sizeof(Batch_Vertex)),
+          .buffer = ogl_buf_make(OGL_BUF_KIND_VERTEX, OGL_BUF_HINT_DYNAMIC,nullptr, REND_MAX_INSTANCES, sizeof(Batch_Vertex)),
           .vattribs = {
             [0] = { .location = 0, .type = OGL_DATA_TYPE_VEC4,  .offset = offsetof(Batch_Vertex, src_rect), .stride = sizeof(Batch_Vertex), .instanced = true, },
             [1] = { .location = 1, .type = OGL_DATA_TYPE_VEC4,  .offset = offsetof(Batch_Vertex, dst_rect), .stride = sizeof(Batch_Vertex),.instanced = true, },

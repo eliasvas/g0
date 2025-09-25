@@ -133,7 +133,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   SDL_State *sdl_state = (SDL_State*)appstate;
   // Perform update and render
   game_update(&sdl_state->gs, sdl_state->dt);
-  game_render(&sdl_state->gs);
+  game_render(&sdl_state->gs, sdl_state->dt);
 
   // Swap the window
   SDL_GL_SwapWindow(sdl_state->window);

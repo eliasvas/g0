@@ -26,6 +26,10 @@ static void* arena_push_nz(Arena *arena, u64 size_in_bytes) {
   // Check if current allocation fits inside whole arena, return nullptr, TODO: we should do the linked list of arenas here sometime
   u64 remaining_reserved_bytes = arena->reserved - arena->current;
   assert(size_in_bytes < remaining_reserved_bytes && "Allocation exceeding Arena reserved space");
+
+  // First align forward to ensure allocation will be aligned
+  arena_align_forward(arena);
+
   // Commit as many chunks needed (maybe 0)
   if (arena->current + size_in_bytes > arena->committed) {
     u64 extra_bytes_needed = size_in_bytes - (arena->committed - arena->current);
@@ -33,12 +37,11 @@ static void* arena_push_nz(Arena *arena, u64 size_in_bytes) {
     M_COMMIT(PTR_FROM_UINT(UINT_FROM_PTR(arena->backing_memory) + arena->committed), chunks_needed*ARENA_DEFAULT_CHUNK_SIZE);
     arena->committed += chunks_needed * ARENA_DEFAULT_CHUNK_SIZE;
   }
-  // Align forward 'current' after the chunk allocations for return, and increase 'current' to point to free to use memory
+
+  // Return chunk of memory, increment allocator to account for it
   void *ret = PTR_FROM_UINT(UINT_FROM_PTR(arena->backing_memory) + arena->current);
   arena->current += size_in_bytes;
-  arena_align_forward(arena);
 
-  // TODO: potential bug, fix this
   assert(arena->current < arena->committed && "Arena's current idx due to align forward has exceeded committed idx");
   
   return ret;
