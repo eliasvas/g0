@@ -6,5 +6,5 @@ CC="clang"
 rm -rf build
 mkdir -p build
 
-$CC $CFLAGS -O0 -std=gnu23 `pkg-config --cflags $PKGS` -Iext src/platform_all.c src/profiler.c src/game.c src/r2d.c -o build/g0 `pkg-config --libs $PKGS` -lm
+$CC $CFLAGS -O0 -std=gnu23 `pkg-config --cflags $PKGS` -Iext src/platform_all.c src/profiler.c src/game.c src/r2d.c src/font_util.c -o build/g0 `pkg-config --libs $PKGS` -lm
 

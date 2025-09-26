@@ -259,6 +259,10 @@ void r2d_end(R2D *rend) {
 }
 
 void r2d_push_quad(R2D *rend, R2D_Quad q) {
+  // If the quad doesn't have a texture, assign white_tex here by default!
+  if (q.tex.impl_state == 0) q.tex = white_tex;
+
+  // Then push it to the chunk list as normal
   rend_quad_chunk_list_push(rend->arena, &rend->list, 256, q);
 }
 

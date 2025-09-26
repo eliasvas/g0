@@ -18,7 +18,7 @@ void game_init(Game_State *gs) {
   assert(image.height > 0);
   assert(image.data != nullptr);
   gs->atlas = ogl_tex_make(image.data, image.width, image.height, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT});
-  gs->font = font_util_load_default_atlas(gs->frame_arena, 32, 1024, 1024);
+  gs->font = font_util_load_default_atlas(gs->frame_arena, 64, 1024, 1024);
 
 }
 
@@ -42,9 +42,10 @@ void game_render(Game_State *gs, float dt) {
 
   char text_to_draw[64];
   f32 fps = 1.0/dt;
+  f32 font_scale = 0.5;
   sprintf(text_to_draw, "fps: %.2f", fps);
-  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(0,64), 2.0);
-
+  f32 w = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
+  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x - w,32), font_scale);
 
   float speedup = 3.0;
   f64 ts = platform_get_time()*speedup;
