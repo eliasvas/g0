@@ -255,4 +255,23 @@ typedef union rect
     f32 raw[4];
 }rect;
 
+static rect rect_calc_bounding_rect(rect r0, rect r1) {
+  v2 p0 = (v2){
+    .x = minimum(r0.x, minimum(r0.x+r0.w, minimum(r1.x, r1.x+r1.w))),
+    .y = minimum(r0.y, minimum(r0.y+r0.h, minimum(r1.y, r1.y+r1.h))),
+  };
+
+  v2 p1 = (v2){
+    .x = maximum(r0.x, maximum(r0.x+r0.w, maximum(r1.x, r1.x+r1.w))),
+    .y = maximum(r0.y, maximum(r0.y+r0.h, maximum(r1.y, r1.y+r1.h))),
+  };
+
+  return (rect) {
+    .x = p0.x,
+    .y = p0.y,
+    .w = p1.x - p0.x,
+    .h = p1.y - p0.y,
+  };
+}
+
 #endif
