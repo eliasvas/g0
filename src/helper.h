@@ -67,6 +67,10 @@ static f32 F32_MIN_POS = 1.175494351e-38F;
 #define array_count(a) (sizeof(a) / sizeof((a)[0]))
 #define signof(x) ((x) > 0 ? 1 : ((x) < 0 ? -1 : 0))
 
+#define MATH_PI 3.14159265358979323846
+#define RAD2DEG(X) (180 * X / MATH_PI)
+#define DEG2RAD(X) (X * MATH_PI / 180)
+
 #define UINT_FROM_PTR(ptr) ((u64)ptr)
 #define PTR_FROM_UINT(num) ((char*)num)
 

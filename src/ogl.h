@@ -6,8 +6,6 @@
 
 // TODO: Make an API to begin..end drawing, for when we want to draw many stuff with same render bundle state
 // TODO: Maybe we should have views to buffers instead of actual ones right?
-// TODO: Make a OGL_NO_CRT and act accordingly.. maybe have NO_CRT the default
-
 
 // https://www.3dgep.com/forward-plus/
 
@@ -16,7 +14,6 @@ extern "C" {
 #endif
 
 #include <stdio.h>
-#include <stdint.h>
 
 typedef struct { float x,y,w,h; } Ogl_Rect;
 typedef struct { float r,g,b,a; } Ogl_Color;

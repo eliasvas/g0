@@ -2,8 +2,6 @@
 #include "ogl.h"
 #include "math3d.h"
 
-// TODO: WE SHOULD ENABLE multisampling ogl side! it should be a dynamic state right?
-
 // HMMMMMMM
 static Ogl_Render_Bundle batch_bundle = {};
 static Ogl_Tex white_tex = {};
@@ -241,7 +239,7 @@ void r2d_end(R2D *rend) {
       .src_rect = *(v4*)&q->src_rect,
       .dst_rect = *(v4*)&q->dst_rect,
       .color = *(v4*)&q->color,
-      .rot_rad = q->rot_rad,
+      .rot_rad = DEG2RAD(q->rot_deg),
       .tex_slot = tex_idx,
     };
 

@@ -32,7 +32,7 @@ typedef struct {
 typedef struct {
   R2D_Rect src_rect, dst_rect;
   R2D_Color color;
-  f32 rot_rad;
+  f32 rot_deg;
 
   // TODO: Maybe this isn't the best way to conduct business.. Ogl_Tex is just a view
   Ogl_Tex tex;
@@ -77,8 +77,8 @@ typedef struct {
 
 // TODO: make the trick with the macro for scale initialization
 typedef struct {
-  v2 offset;
   v2 origin;
+  v2 offset;
   float zoom;
   // TODO: make this rad?
   float rot_deg;

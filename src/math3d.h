@@ -6,11 +6,6 @@
 // TODO: add our own trig functions,
 // I HATE the C standard library
 
-INLINE f32 to_radians(f32 degrees) {
-    f32 res = degrees * (PI / 180.0f);
-    return(res);
-}
-
 typedef union v2
 {
     struct { f32 x,y; };
@@ -227,7 +222,7 @@ INLINE m4 mat4_rotate(f32 angle, v3 axis) {
 
     axis = v3_norm(axis);
 
-    f32 radians = to_radians(angle);
+    f32 radians = DEG2RAD(angle);
     f32 sinA = sin(radians);
     f32 cosA = cos(radians);
     f32 t = 1.0f - cosA;

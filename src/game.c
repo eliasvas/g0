@@ -50,14 +50,14 @@ void game_render(Game_State *gs, float dt) {
   float speedup = 3.0;
   f64 ts = platform_get_time()*speedup;
 
-  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->screen_dim.x/2.0, gs->screen_dim.y/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts*(180.0/PI),}, gs->screen_dim);
+  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->screen_dim.x/2.0, gs->screen_dim.y/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,}, gs->screen_dim);
 
   r2d_push_quad(rend, (R2D_Quad) {
       .src_rect = (R2D_Rect){},
       .dst_rect = (R2D_Rect){0,0,10,10},
       .color = (R2D_Color){1,1,1,0.8},
       .tex = gs->red,
-      .rot_rad = ts,
+      .rot_deg = ts,
   });
   u32 xidx = (u32)ts % ATLAS_SPRITES_X;
   u32 yidx = (u32)ts / ATLAS_SPRITES_X;
@@ -66,7 +66,7 @@ void game_render(Game_State *gs, float dt) {
       .dst_rect = (R2D_Rect){1,1,8,8},
       .color = (R2D_Color){1,1,1,1.0},
       .tex = gs->atlas,
-      .rot_rad = ts,
+      .rot_deg = ts,
   });
   r2d_end(rend);
 

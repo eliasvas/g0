@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "helper.h"
+#include "input.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -55,7 +56,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
   profiler_begin();
 
-  if (!SDL_Init(SDL_INIT_VIDEO)) {
+  if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD)) {
     SDL_Log("Could not initialize SDL");
     return SDL_APP_FAILURE;
   }
@@ -104,7 +105,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   SDL_Log("GLSL version: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
   SDL_SetWindowResizable(sdl_state->window, true);
-  SDL_GL_SetSwapInterval(1);
+  SDL_GL_SetSwapInterval(1); // Set this to 0 to disable VSync
 
   sdl_state->gs.persistent_arena = arena_make(GB(1));
   sdl_state->gs.frame_arena = arena_make(MB(256));
@@ -123,7 +124,16 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
   } else if (event->type == SDL_EVENT_WINDOW_RESIZED) {
     // Update Game_State with new window dimensions
     sdl_state->gs.screen_dim = v2m(event->window.data1, event->window.data2);
+  } else if(event->type == SDL_EVENT_MOUSE_MOTION) {
+    v2 mouse_pos = v2m(event->motion.x, event->motion.y);
+    Input_Event_Node input_event = {};
+    input_event.evt = (Input_Event){
+      .data = {(Input_Mouse_Event) { .mouse_pos = mouse_pos }},
+      .kind = INPUT_EVENT_KIND_MOUSE,
+    };
   }
+
+
 
   return SDL_APP_CONTINUE;
 }
@@ -136,7 +146,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   game_render(&sdl_state->gs, sdl_state->dt);
 
   // Swap the window
-  SDL_GL_SwapWindow(sdl_state->window);
+  {
+    TIME_BLOCK("Swap Window");
+    SDL_GL_SwapWindow(sdl_state->window);
+  }
   
   // Perform timings
   u64 frame_end = SDL_GetTicksNS();
