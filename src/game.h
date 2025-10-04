@@ -5,6 +5,7 @@
 #include "math3d.h"
 #include "font_util.h"
 #include "ogl.h"
+#include "effects.h"
 
 typedef struct {
   Arena *persistent_arena; // For persistent allocations
@@ -15,6 +16,8 @@ typedef struct {
   Ogl_Tex red;
 
   Font_Info font;
+
+  Effect fill_effect;
 } Game_State;
 
 // Not sure if these should be exposed as we will load them via DLL in the future

@@ -81,7 +81,7 @@ Font_Info font_util_load_default_atlas(Arena *arena, u32 glyph_height_in_px, u32
   // Transform to OpenGL-style texture (mainly by convention, I like the upright view on renderdoc) + make the actual texture
   font_util_flip_bitmap(font_bitmap, atlas_width, atlas_height);
 
-  // Produce the equivalent RGBA..
+  // Transform to RGBA
   u8 *font_bitmap_rgba = (u8*)arena_push_array(arena, u8, sizeof(u8)*atlas_width*atlas_height*4);
   for (u32 i = 0; i < atlas_width*atlas_height; ++i) {
     font_bitmap_rgba[4*i + 0] = font_bitmap[i + 0];

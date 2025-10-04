@@ -20,6 +20,8 @@ void game_init(Game_State *gs) {
   gs->atlas = ogl_tex_make(image.data, image.width, image.height, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT});
   gs->font = font_util_load_default_atlas(gs->frame_arena, 64, 1024, 1024);
 
+
+  gs->fill_effect = effect_make(EFFECT_KIND_FILL);
 }
 
 void game_update(Game_State *gs, float dt) {
@@ -70,5 +72,7 @@ void game_render(Game_State *gs, float dt) {
   });
   r2d_end(rend);
 
+  // Testing
+  effect_render(&gs->fill_effect, gs->screen_dim, 1.0/dt, platform_get_time());
 }
 
