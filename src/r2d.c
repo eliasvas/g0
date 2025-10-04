@@ -83,15 +83,15 @@ void main() {
     } else if (f_tex_slot == 1){
       texture_size = textureSize(u_textures[1], 0);
       tc = f_tc / vec2(texture_size.x, texture_size.y);
-      out_color = f_color * texture(u_textures[1], tc);
+      out_color = f_color * texture(u_textures[1], tc).rgba;
     } else if (f_tex_slot == 2){
-      texture_size = textureSize(u_textures[0], 0);
+      texture_size = textureSize(u_textures[2], 0);
       tc = f_tc / vec2(texture_size.x, texture_size.y);
-      out_color = f_color * texture(u_textures[1], tc);
+      out_color = f_color * texture(u_textures[2], tc);
     } else if (f_tex_slot == 3){
-      texture_size = textureSize(u_textures[0], 0);
+      texture_size = textureSize(u_textures[3], 0);
       tc = f_tc / vec2(texture_size.x, texture_size.y);
-      out_color = f_color * texture(u_textures[1], tc);
+      out_color = f_color * texture(u_textures[3], tc);
     }
 }
 

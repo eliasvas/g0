@@ -80,8 +80,18 @@ Font_Info font_util_load_default_atlas(Arena *arena, u32 glyph_height_in_px, u32
 
   // Transform to OpenGL-style texture (mainly by convention, I like the upright view on renderdoc) + make the actual texture
   font_util_flip_bitmap(font_bitmap, atlas_width, atlas_height);
-  font.atlas = ogl_tex_make(font_bitmap, atlas_width, atlas_height, OGL_TEX_FORMAT_R8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT});
-  //t = ogl_tex_make((u8[]){255}, 1,1, OGL_TEX_FORMAT_R8U, (Ogl_Tex_Params){.wrap_t = OGL_TEX_WRAP_MODE_REPEAT, .wrap_s = OGL_TEX_WRAP_MODE_REPEAT});
+
+  // Produce the equivalent RGBA..
+  u8 *font_bitmap_rgba = (u8*)arena_push_array(arena, u8, sizeof(u8)*atlas_width*atlas_height*4);
+  for (u32 i = 0; i < atlas_width*atlas_height; ++i) {
+    font_bitmap_rgba[4*i + 0] = font_bitmap[i + 0];
+    font_bitmap_rgba[4*i + 1] = font_bitmap[i + 0];
+    font_bitmap_rgba[4*i + 2] = font_bitmap[i + 0];
+    font_bitmap_rgba[4*i + 3] = font_bitmap[i + 0];
+  }
+
+  // Finally make the texture
+  font.atlas = ogl_tex_make(font_bitmap_rgba, atlas_width, atlas_height, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT});
 
   return font;
 }
