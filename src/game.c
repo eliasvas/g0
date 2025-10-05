@@ -2,6 +2,7 @@
 #include "ogl.h"
 #include "font_util.h"
 #include "r2d.h"
+#include "input.h"
 
 // Forward Declarations, I don't like this.. @FIXME
 typedef struct { u8 *data; u64 width; u64 height; } Platform_Image_Data;
@@ -22,6 +23,7 @@ void game_init(Game_State *gs) {
 
 
   gs->fill_effect = effect_make(EFFECT_KIND_FILL);
+  gs->vortex_effect = effect_make(EFFECT_KIND_VORTEX);
 }
 
 void game_update(Game_State *gs, float dt) {
@@ -42,6 +44,15 @@ void game_render(Game_State *gs, float dt) {
   });
   r2d_end(fs_rend);
 
+  // Effect Testing too :)
+  Effect_Data vortex_data = {
+    .screen_dim = gs->screen_dim,
+    .time_sec = platform_get_time(),
+    .framerate = 1.0f/dt,
+    .param0 = v4m(0.8,0,0,0), // param0.x is alpha currently
+  };
+  effect_render(&gs->vortex_effect, &vortex_data);
+
   char text_to_draw[64];
   f32 fps = 1.0/dt;
   f32 font_scale = 0.5;
@@ -49,9 +60,16 @@ void game_render(Game_State *gs, float dt) {
   f32 w = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
   font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x - w,32), font_scale);
 
+  sprintf(text_to_draw, "A: pressed:%d-down:%d-released:%d-up:%d", input_key_pressed(KEY_SCANCODE_A), input_key_down(KEY_SCANCODE_A), input_key_released(KEY_SCANCODE_A), input_key_up(KEY_SCANCODE_A));
+  f32 wks = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
+  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x/2 - wks/2,64), 0.5);
+
+  sprintf(text_to_draw, "MMB: pressed:%d-down:%d-released:%d-up:%d", input_mkey_pressed(INPUT_MOUSE_MMB), input_mkey_down(INPUT_MOUSE_MMB), input_mkey_released(INPUT_MOUSE_MMB), input_mkey_up(INPUT_MOUSE_MMB));
+  f32 wks2 = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
+  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x/2 - wks2/2,128), 0.5);
+
   float speedup = 3.0;
   f64 ts = platform_get_time()*speedup;
-
   R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->screen_dim.x/2.0, gs->screen_dim.y/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,}, gs->screen_dim);
 
   r2d_push_quad(rend, (R2D_Quad) {
@@ -72,7 +90,15 @@ void game_render(Game_State *gs, float dt) {
   });
   r2d_end(rend);
 
-  // Testing
-  effect_render(&gs->fill_effect, gs->screen_dim, 1.0/dt, platform_get_time());
+  // Effect Testing
+  Effect_Data fill_data = {
+    .screen_dim = gs->screen_dim,
+    .time_sec = platform_get_time(),
+    .framerate = 1.0f/dt,
+    .param0 = v4m(0.1,0.1,0.9,0.1),
+    .param1 = v4m(1,1,1,1),
+  };
+  effect_render(&gs->fill_effect, &fill_data);
+
 }
 

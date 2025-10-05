@@ -28,6 +28,6 @@ typedef struct {
 } Effect_Data;
 
 Effect effect_make(Effect_Kind kind);
-void effect_render(Effect *effect, v2 screen_dim, f32 time_sec, f32 fps);
+void effect_render(Effect *effect, Effect_Data *data);
 
 #endif

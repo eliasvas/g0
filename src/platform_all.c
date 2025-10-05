@@ -119,21 +119,37 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
   TIME_FUNC;
   SDL_State *sdl_state = (SDL_State*)appstate;
 
+  Input_Event_Node input_event = {};
   if (event->type == SDL_EVENT_QUIT) {
       return SDL_APP_SUCCESS;
   } else if (event->type == SDL_EVENT_WINDOW_RESIZED) {
     // Update Game_State with new window dimensions
     sdl_state->gs.screen_dim = v2m(event->window.data1, event->window.data2);
-  } else if(event->type == SDL_EVENT_MOUSE_MOTION) {
+  } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
     v2 mouse_pos = v2m(event->motion.x, event->motion.y);
-    Input_Event_Node input_event = {};
     input_event.evt = (Input_Event){
-      .data = {(Input_Mouse_Event) { .mouse_pos = mouse_pos }},
+      .data.mme = (Input_MouseMotion_Event) { .mouse_pos = mouse_pos },
+      .kind = INPUT_EVENT_KIND_MOUSEMOTION,
+    };
+  } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN || event->type == SDL_EVENT_MOUSE_BUTTON_UP) {
+    input_event.evt = (Input_Event){
+      .data.me = (Input_Mouse_Event) {
+        .button = (Input_Mouse_Button)(event->button.button - 1),
+        .is_down = (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN),
+      },
       .kind = INPUT_EVENT_KIND_MOUSE,
+    };
+  } else if (event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_KEY_UP) {
+    input_event.evt = (Input_Event){
+      .data.ke = (Input_Keeb_Event) {
+        .scancode = (Key_Scancode)event->key.scancode,
+        .is_down = (event->type == SDL_EVENT_KEY_DOWN),
+      },
+      .kind = INPUT_EVENT_KIND_KEEB,
     };
   }
 
-
+  g_input_push_event(sdl_state->gs.frame_arena, &input_event.evt);
 
   return SDL_APP_CONTINUE;
 }
@@ -141,6 +157,12 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 SDL_AppResult SDL_AppIterate(void *appstate) {
   TIME_FUNC;
   SDL_State *sdl_state = (SDL_State*)appstate;
+
+  // Process the events for the current frame of execution
+  g_input_process_events();
+  // Clear the per-frame arena
+  arena_clear(sdl_state->gs.frame_arena);
+
   // Perform update and render
   game_update(&sdl_state->gs, sdl_state->dt);
   game_render(&sdl_state->gs, sdl_state->dt);
@@ -151,15 +173,14 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     SDL_GL_SwapWindow(sdl_state->window);
   }
   
-  // Perform timings
+  // Perform timings (Should this happen before swap window maybe?)
   u64 frame_end = SDL_GetTicksNS();
   sdl_state->dt = (frame_end - sdl_state->frame_start) / 1000000000.0;
   //printf("fps=%f begin=%f end=%f\n", 1.0/sdl_state->dt, (f32)sdl_state->frame_start, (f32)frame_end);
   sdl_state->frame_start = SDL_GetTicksNS();
 
-  // Clear the per-frame arena
-  arena_clear(sdl_state->gs.frame_arena);
 
+  g_input_end_frame();
   return SDL_APP_CONTINUE;
 }
 

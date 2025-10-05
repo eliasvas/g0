@@ -2,10 +2,13 @@
 #define INPUT_H__
 #include "helper.h"
 #include "math3d.h"
+#include "arena.h"
 
 typedef enum {
+  INPUT_EVENT_KIND_NONE = 0,
   INPUT_EVENT_KIND_KEEB,
   INPUT_EVENT_KIND_MOUSE,
+  INPUT_EVENT_KIND_MOUSEMOTION,
   INPUT_EVENT_KIND_GAMEPAD,
 } Input_Event_Kind;
 
@@ -17,10 +20,13 @@ typedef enum {
 } Input_Mouse_Button;
 
 typedef struct {
-  b32 button_state [INPUT_MOUSE_COUNT];
-  v2 mouse_pos;
-  // scroll stuff
+  Input_Mouse_Button button;
+  b32 is_down;
 } Input_Mouse_Event;
+
+typedef struct {
+  v2 mouse_pos;
+} Input_MouseMotion_Event;
 
 typedef enum {
     KEY_SCANCODE_UNKNOWN = 0,
@@ -123,12 +129,14 @@ typedef struct {
 
 typedef struct {
   union {
-    Input_Mouse_Event   me;
-    Input_Keeb_Event    ke;
-    Input_Gamepad_Event ge;
+    Input_Mouse_Event         me;
+    Input_MouseMotion_Event   mme;
+    Input_Keeb_Event          ke;
+    Input_Gamepad_Event       ge;
   } data;
   Input_Event_Kind kind;
 } Input_Event;
+
 
 typedef struct Input_Event_Node Input_Event_Node;
 struct Input_Event_Node {
@@ -137,8 +145,14 @@ struct Input_Event_Node {
 };
 
 typedef struct {
-    b32 keyboard_state[KEY_SCANCODE_COUNT];
-    b32 mouse_state[INPUT_MOUSE_COUNT];
+  b32 was_down;
+  b32 is_down;
+  u64 transition_count;
+}Input_Key_State;
+
+typedef struct {
+    Input_Key_State keeb_state[KEY_SCANCODE_COUNT];
+    Input_Key_State mouse_state[INPUT_MOUSE_COUNT];
 
     Input_Event_Node *first;
     Input_Event_Node *last;
@@ -147,26 +161,21 @@ typedef struct {
     v2 prev_mouse_pos;
 } Input_Singleton;
 
-Input_Singleton input;
+void g_input_process_events();
+void g_input_end_frame();
+void g_input_push_event(Arena *arena, Input_Event *evt);
 
-b32 input_key_down(Key_Scancode key) {
-  return input.keyboard_state[key];
-}
+b32 input_key_pressed(Key_Scancode key);
+b32 input_key_released(Key_Scancode key);
+b32 input_key_up(Key_Scancode key);
+b32 input_key_down(Key_Scancode key);
 
-b32 input_mkey_down(Input_Mouse_Button key) {
-  return input.mouse_state[key];
-}
+b32 input_mkey_pressed(Input_Mouse_Button button);
+b32 input_mkey_released(Input_Mouse_Button button);
+b32 input_mkey_up(Input_Mouse_Button button);
+b32 input_mkey_down(Input_Mouse_Button button);
 
-b32 input_key_up(Key_Scancode key) {
-  return input.keyboard_state[key];
-}
-
-b32 input_mkey_up(Input_Mouse_Button key) {
-  return input.mouse_state[key];
-}
-
-v2 input_get_mousepos() {
-  return input.mouse_pos;
-}
+v2 input_get_mouse_pos();
+v2 input_get_mouse_delta();
 
 #endif

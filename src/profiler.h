@@ -67,7 +67,6 @@ typedef struct {
 #define TIME_FUNC TIME_BLOCK(__func__)
 
 
-
 void profiler_begin();
 void profiler_end_and_print();
 Profiler_Block profiler_block_begin(const char *region_label, u64 region_idx);

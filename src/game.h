@@ -18,6 +18,7 @@ typedef struct {
   Font_Info font;
 
   Effect fill_effect;
+  Effect vortex_effect;
 } Game_State;
 
 // Not sure if these should be exposed as we will load them via DLL in the future
