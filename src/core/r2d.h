@@ -4,10 +4,8 @@
 // TODO: Texture handling is atrocious, make it possible (also Ogl side) to assign c-style texture sampler arrays to a slot
 // TODO: Look at the batch fragment shader todos.. BEWARE!!
 
-#include "helper.h"
-#include "math3d.h"
-#include "arena.h"
-#include "ogl.h"
+#include "base/base_inc.h"
+#include "core/ogl.h"
 
 #define REND_MAX_INSTANCES 512
 #define REND_MAX_TEXTURES 4

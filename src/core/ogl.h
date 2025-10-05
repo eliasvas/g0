@@ -196,7 +196,6 @@ typedef struct {
   extern void ogl_tex_deinit(Ogl_Tex *tex);
 
   extern void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t instance_count);
-  extern void ogl_render_bundle_draw_instanced(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t indices_count, uint32_t instance_count);
 
   extern void ogl_render_target_init(Ogl_Render_Target *rt, u32 w, u32 h, u32 attachment_count, Ogl_Tex_Format format, bool add_depth);
   extern Ogl_Render_Target ogl_render_target_make(u32 w, u32 h, u32 attachment_count, Ogl_Tex_Format format, bool add_depth);
@@ -644,11 +643,6 @@ void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint3
   ogl_render_bundle_bind(bundle);
   // FIXME: first == 0? why? we need to enhance the API
   glDrawArraysInstanced(ogl_prim_type_to_gl_type(prim), 0, vertex_count, instance_count);
-}
-
-void ogl_render_bundle_draw_instanced(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t indices_count, uint32_t instance_count) {
-  ogl_render_bundle_bind(bundle);
-  //glDrawElementsInstanced(GLenum mode, GLsizei count, GLenum type, const void * indices, GLsizei instancecount);
 }
 
 #endif

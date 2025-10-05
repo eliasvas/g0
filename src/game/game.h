@@ -1,11 +1,8 @@
 #ifndef _GAME_H__
 #define _GAME_H__
-#include "helper.h"
-#include "arena.h"
-#include "math3d.h"
-#include "font_util.h"
-#include "ogl.h"
-#include "effects.h"
+
+#include "base/base_inc.h"
+#include "core/core_inc.h"
 
 typedef struct {
   Arena *persistent_arena; // For persistent allocations

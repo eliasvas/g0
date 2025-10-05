@@ -1,6 +1,4 @@
-#include "effects.h"
-#include "ogl.h"
-#include "math3d.h"
+#include "core/core_inc.h"
 
 const char* fullscreen_vs = R"(#version 300 es
 precision highp float;

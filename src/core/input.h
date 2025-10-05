@@ -1,8 +1,6 @@
 #ifndef INPUT_H__
 #define INPUT_H__
-#include "helper.h"
-#include "math3d.h"
-#include "arena.h"
+#include "base/base_inc.h"
 
 typedef enum {
   INPUT_EVENT_KIND_NONE = 0,

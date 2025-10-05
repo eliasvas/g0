@@ -1,9 +1,7 @@
 #ifndef _FONT_UTIL_H__
 #define _FONT_UTIL_H__
-#include "helper.h"
-#include "arena.h"
-#include "ogl.h"
-#include "math3d.h"
+#include "base/base_inc.h"
+#include "core/ogl.h"
 
 // TODO: LOD stuff and our own lookup data structure (Glyph_Cache?)
 // TODO: SDF font support

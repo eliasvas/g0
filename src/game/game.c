@@ -1,8 +1,4 @@
 #include "game.h"
-#include "ogl.h"
-#include "font_util.h"
-#include "r2d.h"
-#include "input.h"
 
 // Forward Declarations, I don't like this.. @FIXME
 typedef struct { u8 *data; u64 width; u64 height; } Platform_Image_Data;

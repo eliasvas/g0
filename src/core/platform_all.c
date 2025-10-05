@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include "helper.h"
+#include "base/base_inc.h"
 #include "input.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -13,8 +13,7 @@
 #define OGL_IMPLEMENTATION
 #include "ogl.h"
 
-#include "profiler.h"
-#include "game.h"
+#include "game/game.h"
 
 // we need this to port to WASM sadly, because WASM programs are event based, no main loops :(
 #define SDL_MAIN_USE_CALLBACKS

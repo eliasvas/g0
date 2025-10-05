@@ -1,8 +1,6 @@
 #ifndef EFFECTS_H__
 #define EFFECTS_H__
-#include "helper.h"
-#include "ogl.h"
-#include "math3d.h"
+#include "base/base_inc.h"
 
 typedef enum {
   EFFECT_KIND_BLUR_SOURCE,

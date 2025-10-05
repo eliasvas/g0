@@ -3,14 +3,14 @@
 #include <stb/stb_truetype.h>
 
 #include "font_util.h"
-#include "ogl.h"
 
-#include "arena.h"
+#include "base/base_inc.h"
+#include "ogl.h"
 #include "r2d.h"
 
 // By default we just embed ProggyClean - Ugly AF but for now it'll do!
 static const u8 default_font_data[] = {
-#embed "../data/ProggyClean.ttf"
+#embed "../../data/ProggyClean.ttf"
 };
 
 void font_util_flip_bitmap(u8 *bitmap, u32 width, u32 height) {

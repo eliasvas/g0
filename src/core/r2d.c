@@ -1,6 +1,4 @@
 #include "r2d.h"
-#include "ogl.h"
-#include "math3d.h"
 
 // HMMMMMMM
 static Ogl_Render_Bundle batch_bundle = {};
