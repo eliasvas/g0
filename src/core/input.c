@@ -1,7 +1,7 @@
 #include "input.h"
 
 // TODO: Maybe we shouuld have an Input_Singleton inside Game_State, NO GLOBALS!
-Input_Singleton g_input;
+static Input_Singleton g_input;
 
 // TODO: Gamepad Events
 // TODO: Scrolling Events

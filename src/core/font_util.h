@@ -23,13 +23,12 @@ typedef struct {
   Ogl_Tex atlas;
 }Font_Info;
 
-void font_util_flip_bitmap(u8 *bitmap, u32 width, u32 height);
 Font_Info font_util_load_default_atlas(Arena *arena, u32 glyph_height_in_px, u32 atlas_width, u32 atlas_height);
 
 rect font_util_calc_text_rect(Font_Info *font_info, char *text, v2 baseline_pos, f32 scale);
 f32 font_util_measure_text_width(Font_Info *font_info, char *text, f32 scale);
 f32 font_util_measure_text_height(Font_Info *font_info, char *text, f32 scale);
 
-void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, v2 screen_dim, char *text, v2 baseline_pos, f32 scale);
+void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, v2 screen_dim, char *text, v2 baseline_pos, f32 scale, bool draw_box);
 
 #endif

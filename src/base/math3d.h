@@ -250,6 +250,10 @@ typedef union rect
     f32 raw[4];
 }rect;
 
+static bool rect_isect_point(rect r, v2 p) {
+  return ((p.x >= r.x) && (p.x <= r.x+r.w)) && ((p.y >= r.y) && (p.y <= r.y+r.h));
+}
+
 static rect rect_calc_bounding_rect(rect r0, rect r1) {
   v2 p0 = (v2){
     .x = minimum(r0.x, minimum(r0.x+r0.w, minimum(r1.x, r1.x+r1.w))),
@@ -266,6 +270,20 @@ static rect rect_calc_bounding_rect(rect r0, rect r1) {
     .y = p0.y,
     .w = p1.x - p0.x,
     .h = p1.y - p0.y,
+  };
+}
+
+static rect rect_try_fit_inside(rect src, rect dest) {
+  // Calculatre mid point of dest rect
+  v2 mp = v2m(dest.x + dest.w/2.0, dest.y + dest.h/2.0);
+  // Sub half of source's dims to center
+  v2 p = v2_sub(mp, v2m(src.w/2.0, src.h/2.0));
+  // Make and return final rectangle
+  return (rect) {
+    .x = p.x,
+    .y = p.y,
+    .w = src.y,
+    .h = src.h,
   };
 }
 

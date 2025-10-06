@@ -1,4 +1,5 @@
 #include "game.h"
+#include "gui/gui.h"
 
 // Forward Declarations, I don't like this.. @FIXME
 typedef struct { u8 *data; u64 width; u64 height; } Platform_Image_Data;
@@ -20,6 +21,9 @@ void game_init(Game_State *gs) {
 
   gs->fill_effect = effect_make(EFFECT_KIND_FILL);
   gs->vortex_effect = effect_make(EFFECT_KIND_VORTEX);
+
+  // Gui Stuff
+  gui_context_init(gs->frame_arena, &gs->font);
 }
 
 void game_update(Game_State *gs, float dt) {
@@ -54,15 +58,16 @@ void game_render(Game_State *gs, float dt) {
   f32 font_scale = 0.5;
   sprintf(text_to_draw, "fps: %.2f", fps);
   f32 w = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
-  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x - w,32), font_scale);
+  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x - w,32), font_scale, true);
 
   sprintf(text_to_draw, "A: pressed:%d-down:%d-released:%d-up:%d", input_key_pressed(KEY_SCANCODE_A), input_key_down(KEY_SCANCODE_A), input_key_released(KEY_SCANCODE_A), input_key_up(KEY_SCANCODE_A));
   f32 wks = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
-  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x/2 - wks/2,64), 0.5);
+  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x/2 - wks/2,64), 0.5, true);
 
   sprintf(text_to_draw, "MMB: pressed:%d-down:%d-released:%d-up:%d", input_mkey_pressed(INPUT_MOUSE_MMB), input_mkey_down(INPUT_MOUSE_MMB), input_mkey_released(INPUT_MOUSE_MMB), input_mkey_up(INPUT_MOUSE_MMB));
+  //sprintf(text_to_draw, "mousepos: %f %f", input_get_mouse_pos().x, input_get_mouse_pos().y);
   f32 wks2 = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
-  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x/2 - wks2/2,128), 0.5);
+  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x/2 - wks2/2,128), 0.5, true);
 
   float speedup = 3.0;
   f64 ts = platform_get_time()*speedup;
@@ -95,6 +100,13 @@ void game_render(Game_State *gs, float dt) {
     .param1 = v4m(1,1,1,1),
   };
   effect_render(&gs->fill_effect, &fill_data);
+
+  gui_begin(gs->screen_dim);
+  static char *str = "Hello Gui!";
+  if (gui_button(__LINE__, (rect){{0,0,200,200}}, str)) {
+    str = "Clicked :)";
+  }
+  gui_end();
 
 }
 
