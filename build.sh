@@ -1,4 +1,3 @@
-#TODO: Look into building with ASAN
 PKGS="sdl3 glew"
 CFLAGS="-Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wswitch-enum -pedantic -fno-exceptions -ggdb"
 CC="clang"

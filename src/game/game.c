@@ -64,8 +64,8 @@ void game_render(Game_State *gs, float dt) {
   f32 wks = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
   font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x/2 - wks/2,64), 0.5, true);
 
-  sprintf(text_to_draw, "MMB: pressed:%d-down:%d-released:%d-up:%d", input_mkey_pressed(INPUT_MOUSE_MMB), input_mkey_down(INPUT_MOUSE_MMB), input_mkey_released(INPUT_MOUSE_MMB), input_mkey_up(INPUT_MOUSE_MMB));
-  //sprintf(text_to_draw, "mousepos: %f %f", input_get_mouse_pos().x, input_get_mouse_pos().y);
+  //sprintf(text_to_draw, "MMB: pressed:%d-down:%d-released:%d-up:%d", input_mkey_pressed(INPUT_MOUSE_MMB), input_mkey_down(INPUT_MOUSE_MMB), input_mkey_released(INPUT_MOUSE_MMB), input_mkey_up(INPUT_MOUSE_MMB));
+  sprintf(text_to_draw, "mousepos: %f %f", input_get_mouse_pos().x, input_get_mouse_pos().y);
   f32 wks2 = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
   font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x/2 - wks2/2,128), 0.5, true);
 
@@ -103,7 +103,7 @@ void game_render(Game_State *gs, float dt) {
 
   gui_begin(gs->screen_dim);
   static char *str = "Hello Gui!";
-  if (gui_button(__LINE__, (rect){{0,0,200,200}}, str)) {
+  if (gui_button(__LINE__, (rect){{0,0,100,100}}, str)) {
     str = "Clicked :)";
   }
   gui_end();

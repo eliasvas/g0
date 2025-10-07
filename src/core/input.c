@@ -1,4 +1,5 @@
 #include "input.h"
+#include "stdio.h"
 
 // TODO: Maybe we shouuld have an Input_Singleton inside Game_State, NO GLOBALS!
 static Input_Singleton g_input;
@@ -34,7 +35,9 @@ void g_input_process_events() {
       case INPUT_EVENT_KIND_GAMEPAD:
         // TBH
         break;
-      default: break;
+      default: 
+        assert(0 && "Corrupted event cannot be processed");
+        break;
     }
   }
   // clear the event queue at the end
@@ -48,7 +51,7 @@ void g_input_end_frame() {
     g_input.keeb_state[keeb_key_idx].was_down = g_input.keeb_state[keeb_key_idx].is_down;
     g_input.keeb_state[keeb_key_idx].transition_count = 0;
   }
-  for (u32 mouse_key_idx = 0; mouse_key_idx < KEY_SCANCODE_COUNT; ++mouse_key_idx) {
+  for (u32 mouse_key_idx = 0; mouse_key_idx < INPUT_MOUSE_COUNT; ++mouse_key_idx) {
     g_input.mouse_state[mouse_key_idx].was_down = g_input.mouse_state[mouse_key_idx].is_down;
     g_input.mouse_state[mouse_key_idx].transition_count = 0;
   }

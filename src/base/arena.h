@@ -42,7 +42,7 @@ static void* arena_push_nz(Arena *arena, u64 size_in_bytes) {
   void *ret = PTR_FROM_UINT(UINT_FROM_PTR(arena->backing_memory) + arena->current);
   arena->current += size_in_bytes;
 
-  assert(arena->current < arena->committed && "Arena's current idx due to align forward has exceeded committed idx");
+  assert(arena->current <= arena->committed && "Arena's current idx due to align forward has exceeded committed idx");
   
   return ret;
 }

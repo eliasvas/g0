@@ -4,3 +4,4 @@
 - GUI system
 - Entity/World representation
 - Audio mixer (based on SDL_Audio, no SDL_Mixer)
+- Build with ASAN
