@@ -19,6 +19,7 @@ static void arena_align_forward(Arena *arena) {
 }
 
 static void arena_destroy(Arena *arena) {
+  ASAN_UNPOISON_MEMORY_REGION(arena->backing_memory, arena->reserved);
   M_RELEASE(arena->backing_memory, arena->reserved);
 }
 
@@ -30,15 +31,18 @@ static void* arena_push_nz(Arena *arena, u64 size_in_bytes) {
   // First align forward to ensure allocation will be aligned
   arena_align_forward(arena);
 
-  // Commit as many chunks needed (maybe 0)
+  // Commit as many chunks needed (maybe 0) + Posion it
   if (arena->current + size_in_bytes > arena->committed) {
     u64 extra_bytes_needed = size_in_bytes - (arena->committed - arena->current);
     u64 chunks_needed = (extra_bytes_needed/ARENA_DEFAULT_CHUNK_SIZE) + 1;
     M_COMMIT(PTR_FROM_UINT(UINT_FROM_PTR(arena->backing_memory) + arena->committed), chunks_needed*ARENA_DEFAULT_CHUNK_SIZE);
+    ASAN_POISON_MEMORY_REGION(PTR_FROM_UINT(UINT_FROM_PTR(arena->backing_memory) + arena->committed), chunks_needed*ARENA_DEFAULT_CHUNK_SIZE);
+    //ASAN_UNPOISON_MEMORY_REGION(PTR_FROM_UINT(UINT_FROM_PTR(arena->backing_memory) + arena->committed), chunks_needed*ARENA_DEFAULT_CHUNK_SIZE);
     arena->committed += chunks_needed * ARENA_DEFAULT_CHUNK_SIZE;
   }
 
-  // Return chunk of memory, increment allocator to account for it
+  // Return chunk of memory, increment allocator to account for it + UnPoison the region
+  ASAN_UNPOISON_MEMORY_REGION(PTR_FROM_UINT(UINT_FROM_PTR(arena->backing_memory) + arena->current), size_in_bytes);
   void *ret = PTR_FROM_UINT(UINT_FROM_PTR(arena->backing_memory) + arena->current);
   arena->current += size_in_bytes;
 

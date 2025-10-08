@@ -2,7 +2,8 @@
 
 ## Deps
 ```terminal
-sudo dnf install git clang SDL3 SDL3-devel glew glew-devel -y
+sudo dnf install git clang clang-devel SDL3 SDL3-devel glew glew-devel -y
+dnf debuginfo-install SDL3 #optional
 git lfs install
 ```
 ## Cloning
@@ -14,6 +15,14 @@ git clone --recursive https://github.com/eliasvas/g0
 ### Linux
 ```bash
 ./build.sh
+```
+### Linux (inside vim
+```
+# add these to your .vimrc
+nnoremap <F7> :!./build.sh<CR>
+nnoremap <F6> :!gf2<CR>
+nnoremap <F5> :!bash -c 'source ./build.sh && ./build/g0'<CR>
+
 ```
 ### Web (From Linux)
 first install and activate [emscripten](https://emscripten.org/docs/getting_started/downloads.html)

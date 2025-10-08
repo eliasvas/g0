@@ -116,6 +116,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
   TIME_FUNC;
+  //SDL_State *sdl_state = (SDL_State*)appstate;
   SDL_State *sdl_state = (SDL_State*)appstate;
 
   Input_Event_Node input_event = {};
