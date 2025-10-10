@@ -7,5 +7,6 @@
 #include "input.h"
 #include "effects.h"
 #include "font_util.h"
+#include "json_util.h"
 
 #endif

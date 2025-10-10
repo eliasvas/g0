@@ -1,7 +1,5 @@
-- Make a shadertoy-style thingy to generate shader effects, mainly will be used for backgrounds i imagine
-- Screen Shake / Screen Blur / Screen Pixelification
-- Font Loading/Rendering
-- GUI system
+- Screen Shake / Screen Blur / Screen Pixelification (More Effects)
 - Entity/World representation
 - Audio mixer (based on SDL_Audio, no SDL_Mixer)
-- Build with ASAN
+
+- GUI system

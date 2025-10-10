@@ -24,6 +24,10 @@ void game_init(Game_State *gs) {
 
   // Gui Stuff
   gui_context_init(gs->frame_arena, &gs->font);
+
+  // Json library testing
+  Json_Tokens tokens = json_tokenize(str);
+  json_tok_print(tokens);
 }
 
 void game_update(Game_State *gs, float dt) {
