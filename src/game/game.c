@@ -26,14 +26,14 @@ void game_init(Game_State *gs) {
   gui_context_init(gs->frame_arena, &gs->font);
 
   // Json library testing
-  printf("%s\n", str);
-  Json_Tokens tokens = json_tokenize(gs->frame_arena, str);
-  json_tok_print(tokens);
+  Json_Element *root = json_parse(gs->frame_arena, test_str);
+  assert(root);
 
-  Json_Element *root = json_parse(gs->frame_arena, tokens);
-  //assert(root);
-  Json_Element *e = json_lookup(root, (buf){"msg-type", 8});
+  Json_Element *e = json_lookup(root, MAKE_STR("msg-from"));
   assert(e);
+  Json_Element *e2 = json_lookup(e, MAKE_STR("class"));
+  assert(e2);
+  assert(str_cmp("soldier", e2->value.buf.data, str_len("soldier")));
 }
 
 void game_update(Game_State *gs, float dt) {

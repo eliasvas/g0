@@ -288,5 +288,43 @@ static f32 F32_MIN_POS = 1.175494351e-38F;
   ((void)(addr), (void)(size))
 #endif
 
+//////////////////////////////
+// String stuff
+//////////////////////////////
+
+#define MAKE_STR(s) ((buf){s, str_len(s)})
+
+static u32 str_len(char *s) {
+  u32 count = 0;
+  while (s[count]) count++;
+  return count;
+}
+
+static b32 str_cmp(char *l, char *r, u64 size) {
+  if (!l || !r) return false;
+  for (u64 i = 0; i < size; i++) {
+    if (l[i] != r[i]) return false;
+  }
+  return true;
+}
+
+//////////////////////////////
+// Buffer abstraction
+//////////////////////////////
+
+typedef struct {
+  char *data;
+  u64 count;
+} buf;
+
+static buf buf_make(char *data, u64 count) {
+  return (buf) {
+    .data = data,
+    .count = count,
+  };
+}
+static b32 buf_eq(buf l, buf r) {
+  return str_cmp(l.data, r.data, l.count);
+}
 
 #endif
