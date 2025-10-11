@@ -26,8 +26,14 @@ void game_init(Game_State *gs) {
   gui_context_init(gs->frame_arena, &gs->font);
 
   // Json library testing
-  Json_Tokens tokens = json_tokenize(str);
+  printf("%s\n", str);
+  Json_Tokens tokens = json_tokenize(gs->frame_arena, str);
   json_tok_print(tokens);
+
+  Json_Element *root = json_parse(gs->frame_arena, tokens);
+  //assert(root);
+  Json_Element *e = json_lookup(root, (buf){"msg-type", 8});
+  assert(e);
 }
 
 void game_update(Game_State *gs, float dt) {
