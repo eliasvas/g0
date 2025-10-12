@@ -33,7 +33,19 @@ void game_init(Game_State *gs) {
   assert(e);
   Json_Element *e2 = json_lookup(e, MAKE_STR("class"));
   assert(e2);
-  assert(str_cmp("soldier", e2->value.buf.data, str_len("soldier")));
+  assert(str_cmp("soldier", e2->value.data, str_len("soldier")));
+
+  Json_Element *r = json_lookup(root, MAKE_STR("msg-nums"));
+  assert(r);
+  assert(buf_to_int(r->first->value) == 12);
+
+  Json_Element *r2 = json_lookup(root, MAKE_STR("msg-floats"));
+  assert(r2);
+  assert(equalf(buf_to_float(r2->first->next->value), 5.22, 0.1));
+
+  Json_Element *r3 = json_lookup(root, MAKE_STR("msg-bools"));
+  assert(r3);
+  assert(buf_to_bool(r3->first->value) == true);
 }
 
 void game_update(Game_State *gs, float dt) {

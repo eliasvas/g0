@@ -96,9 +96,8 @@ Font_Info font_util_load_default_atlas(Arena *arena, u32 glyph_height_in_px, u32
   return font;
 }
 
-// TODO: WHY strlen, we dont like the cstdlib here!
 rect font_util_calc_text_rect(Font_Info *font_info, char *text, v2 baseline_pos, f32 scale) {
-  u32 glyph_count = strlen(text);
+  u32 glyph_count = str_len(text);
   if (glyph_count == 0) return (rect){};
 
   Glyph_Info first_glyph = font_info->glyphs[text[0] - font_info->first_codepoint];
@@ -143,7 +142,7 @@ void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, v2 screen_dim
     });
   }
 
-  for (u32 i = 0; i < strlen(text); ++i) {
+  for (u32 i = 0; i < str_len(text); ++i) {
     u8 c = text[i];
     Glyph_Info metrics = font_info->glyphs[c - font_info->first_codepoint];
     r2d_push_quad(text_rend, (R2D_Quad) {

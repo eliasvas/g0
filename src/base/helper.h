@@ -59,11 +59,13 @@ static f32 F32_MIN_POS = 1.175494351e-38F;
 #define align32(val) align_pow2(val,32)
 #define align64(val) align_pow2(val,64)
 #define equalf(a, b, epsilon) (fabs(b - a) <= epsilon)
+#define absolute(a) ((a < 0) ? (-a) : (a))
 #define maximum(a, b) ((a) > (b) ? (a) : (b))
 #define minimum(a, b) ((a) < (b) ? (a) : (b))
 #define step(threshold, value) ((value) < (threshold) ? 0 : 1)
 #define clamp(x, a, b)  (maximum(a, minimum(x, b)))
 #define is_pow2(x) ((x & (x - 1)) == 0)
+#define is_digit(x) (x >= '0' && x <= '9')
 #define array_count(a) (sizeof(a) / sizeof((a)[0]))
 #define signof(x) ((x) > 0 ? 1 : ((x) < 0 ? -1 : 0))
 
@@ -73,6 +75,13 @@ static f32 F32_MIN_POS = 1.175494351e-38F;
 
 #define UINT_FROM_PTR(ptr) ((u64)ptr)
 #define PTR_FROM_UINT(num) ((char*)num)
+
+static f64 pwr(double b, int e) {
+  f64 p = 1;
+  for (int i = 0; i < absolute(e); i++) p = p * b;
+  if (e < 0) return 1 / p;
+  return p;
+}
 
 //////////////////////////////
 // Platform Specific Defines
@@ -300,12 +309,77 @@ static u32 str_len(char *s) {
   return count;
 }
 
-static b32 str_cmp(char *l, char *r, u64 size) {
+static b32 str_cmp(char *l, char *r, s64 size) {
   if (!l || !r) return false;
-  for (u64 i = 0; i < size; i++) {
-    if (l[i] != r[i]) return false;
+  for (s64 idx = 0; idx < size; idx++) {
+    if (l[idx] != r[idx]) return false;
   }
   return true;
+}
+
+static b32 str_find(char *s, char c, s64 size) {
+  for (s64 idx = 0; idx < size; idx++) {
+    if (s[idx] == c) return true;
+  }
+  return false;
+}
+
+static s64 str_to_int(char *s, s64 size) {
+  s64 counter = 0;
+  for (s64 idx = size-1; idx >= 0; idx-=1) {
+    counter += (s[size-idx-1] - '0') * pwr(10,idx);
+  }
+  return counter;
+}
+
+static f64 str_to_float(char *s, s64 size) {
+  f64 counter = 0.0;
+  s64 dot_idx = -1;
+  s64 sign = 1;
+
+  if (size == 0) return 0.0;
+
+  // handle sign
+  u64 start = 0;
+  if (s[0] == '-') {
+    sign = -1;
+    start = 1;
+  } else if (s[0] == '+') {
+    start = 1;
+  }
+
+  // find dot index
+  for (s64 i = start; i < size; i++) {
+    if (s[i] == '.') {
+      dot_idx = i;
+      break;
+    } else if (s[i] == 'e' || s[i] == 'E') {
+      // cop out with scientific notation
+      return 0.0;
+    }
+  }
+
+  if (dot_idx == -1) {
+    counter = (f64)str_to_int(s + start, size - start);
+  } else {
+    // integer part
+    u32 p = 0;
+    for (s64 i = (s64)dot_idx - 1; i >= (s64)start; i-=1, p+=1) {
+      counter += (s[i] - '0') * pwr(10, p);
+    }
+
+    // fractional part
+    p = 1;
+    for (s64 i = dot_idx + 1; i < size; i+=1, p+=1) {
+      counter += (s[i] - '0') / pwr(10, p);
+    }
+  }
+
+  return counter * sign;
+}
+
+static b32 str_to_bool(char *s, s64 size) {
+  return str_cmp(s, "true", size);
 }
 
 //////////////////////////////
@@ -323,8 +397,26 @@ static buf buf_make(char *data, u64 count) {
     .count = count,
   };
 }
+
 static b32 buf_eq(buf l, buf r) {
   return str_cmp(l.data, r.data, l.count);
 }
+
+static b32 buf_contains(buf buf, char c) {
+  return str_find(buf.data, c, buf.count);
+}
+
+static s64 buf_to_int(buf b) {
+  return str_to_int(b.data, b.count);
+}
+
+static f64 buf_to_float(buf b) {
+  return str_to_float(b.data, b.count);
+}
+
+static f64 buf_to_bool(buf b) {
+  return str_to_bool(b.data, b.count);
+}
+ 
 
 #endif

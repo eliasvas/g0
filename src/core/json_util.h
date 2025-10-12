@@ -23,11 +23,6 @@ typedef struct {
   buf buf;
   Json_Token_Kind kind;
 } Json_Token;
-typedef struct Json_Token_Node Json_Token_Node;
-struct Json_Token_Node {
-    Json_Token_Node *next;
-    Json_Token tok;
-};
 typedef struct {
   Json_Token *tokens;
   u64 count;
@@ -39,12 +34,11 @@ static int json_tok_count_number(char* num_str) {
     int count = 0;
     for(u32 i = 0; i < str_len(num_str); ++i, ++count) {
         char c = num_str[i];
-        if (c != '.' && c != '-' && (c < '0' || c > '9'))break;
+        if (c != 'e' && c != 'E' && c != '.' && c != '-' && (c < '0' || c > '9'))break;
     }
     return count;
 }
 
-//@FIXME: This is not correct, FIX this
 static int json_tok_count_string(char* s) {
     int count = 0;
     int quote_count = 0;
@@ -160,20 +154,10 @@ static void json_tok_print(Json_Tokens tokens) {
   }
 }
 
-// TODO: maybe we need a primitive kind here for validation purposes
-typedef struct {
-  union {
-    int i;
-    float f;
-    buf buf;
-    bool b;
-  };
-} Json_Primitive;
-
 typedef struct Json_Element Json_Element;
 struct Json_Element {
-  Json_Primitive label;
-  Json_Primitive value;
+  buf label;
+  buf value;
 
   Json_Element *first;
   Json_Element *next;
@@ -211,26 +195,26 @@ static void json_parser_eat_tok(Json_Parser *parser, Json_Token_Kind expected_to
 
 static Json_Element* json_lookup(Json_Element *root, buf label) {
   Json_Element *iter = root->first;
-  while (iter != nullptr && !buf_eq(iter->label.buf, label))iter = iter->next;
+  while (iter != nullptr && !buf_eq(iter->label, label))iter = iter->next;
 
   return iter;
 }
 
 static Json_Element* json_parse_element(Json_Parser *parser, buf label);
-static Json_Primitive json_parse_primitive(Json_Parser *parser) {
-  Json_Primitive prim = {};
+static buf json_parse_primitive(Json_Parser *parser) {
+  buf prim = {};
   Json_Token tok = json_parser_get_tok(parser);
   bool found = true;
   if (tok.kind == JSON_TOKEN_KIND_TRUE) {
-    prim = (Json_Primitive) { .b = true };
+    prim = tok.buf;
   } else if (tok.kind == JSON_TOKEN_KIND_FALSE){
-    prim = (Json_Primitive) { .b = false };
+    prim = tok.buf;
   } else if (tok.kind == JSON_TOKEN_KIND_STRING) {
-    prim = (Json_Primitive) { .buf = tok.buf };
+    prim = tok.buf;
   } else if (tok.kind == JSON_TOKEN_KIND_NULL){
-    prim = (Json_Primitive) { .i = 0 };
+    prim = tok.buf;
   } else if (tok.kind == JSON_TOKEN_KIND_NUMBER){ 
-    prim = (Json_Primitive) { .i = 42 };
+    prim = tok.buf;
   } else {
     found = false;
   }
@@ -258,7 +242,7 @@ static Json_Element* json_parse_element(Json_Parser *parser, buf label) {
   // Try to parse actual value (if its a primitive) and return the elements
   Json_Element *e = arena_push_array(parser->arena, Json_Element, 1);
   e->first = sublist;
-  e->label = (Json_Primitive) { .buf = label };
+  e->label = label;
   e->next = nullptr;
   e->value = json_parse_primitive(parser);
 
@@ -269,7 +253,7 @@ static Json_Element* json_parse_list(Json_Parser *parser, buf label, Json_Token_
   Json_Element *first = nullptr;
   Json_Element *last = nullptr;
 
-  Json_Primitive labelv = {};
+  buf labelv = {};
   while (json_parser_get_tok(parser).kind != end_token) {
     if (has_labels) {
       // parse the label
@@ -316,7 +300,9 @@ static Json_Element *json_parse(Arena *arena, char *json_str) {
 static char *test_str = "{ \"msg-type\": [ \"0xdeadbeef\", \"irc log\" ], \
 \"msg-from\": { \"class\": \"soldier\", \"name\": \"Wixilav\" }, \
 \"msg-to\": { \"class\": \"supreme-commander\", \"name\": \"[Redacted]\" }, \
-\"random_nums\": [ 1,2,3,4,5 ], \
+\"msg-nums\": [ 12,2,3,4,5 ], \
+\"msg-floats\": [ 3.14 , 5.22, 5.43 ], \
+\"msg-bools\": [ true, false ], \
 \"msg-log\": [ \
     \"soldier: Boss there is a slight problem with the piece offering to humans\", \
     \"supreme-commander: Explain yourself soldier!\", \
