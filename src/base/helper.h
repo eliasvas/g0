@@ -66,9 +66,11 @@ static f32 F32_MIN_POS = 1.175494351e-38F;
 #define clamp(x, a, b)  (maximum(a, minimum(x, b)))
 #define is_pow2(x) ((x & (x - 1)) == 0)
 #define is_digit(x) (x >= '0' && x <= '9')
+#define is_upper(x) (x >= 'A' && x <= 'Z')
+#define is_lower(x) (x >= 'a' && x <= 'z')
 #define array_count(a) (sizeof(a) / sizeof((a)[0]))
 #define signof(x) ((x) > 0 ? 1 : ((x) < 0 ? -1 : 0))
-
+#define each_enumv(type, upper, it) type it = (type)0; it < upper##_COUNT; it = (type)(it+1)
 #define MATH_PI 3.14159265358979323846
 #define RAD2DEG(X) (180 * X / MATH_PI)
 #define DEG2RAD(X) (X * MATH_PI / 180)

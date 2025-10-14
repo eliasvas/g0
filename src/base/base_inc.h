@@ -5,5 +5,6 @@
 #include "arena.h"
 #include "math3d.h"
 #include "profiler.h"
+#include "hash.h"
 
 #endif

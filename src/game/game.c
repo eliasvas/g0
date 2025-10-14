@@ -123,12 +123,13 @@ void game_render(Game_State *gs, float dt) {
   };
   effect_render(&gs->fill_effect, &fill_data);
 
-  gui_begin(gs->screen_dim);
-  static char *str = "Hello Gui!";
-  if (gui_button(__LINE__, (rect){{0,0,100,100}}, str)) {
-    str = "Clicked :)";
+  gui_frame_begin(gs->screen_dim, dt);
+  gui_set_next_rect((rect){{0,0,100,100}});
+  gui_set_next_bg_color(v4m(0.4,0.4,0.4,1));
+  if (gui_button("Button?").flags & GUI_SIGNAL_FLAG_LMB_PRESSED) {
+    printf("Heyo\n");
   }
-  gui_end();
+  gui_frame_end();
 
 }
 
