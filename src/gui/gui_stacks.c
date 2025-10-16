@@ -82,7 +82,7 @@ void gui_init_stacks() {
 	state->pref_width_stack.free = 0;
 	state->pref_width_stack.auto_pop = 0;
 	// -- pref_height stack initialization
-	state->pref_height_nil_stack_top.v = (Gui_Size){GUI_SIZE_KIND_PIXELS,30.0f,1.0};
+	state->pref_height_nil_stack_top.v = (Gui_Size){GUI_SIZE_KIND_PIXELS,40.0f,1.0};
 	state->pref_height_stack.top = &state->pref_height_nil_stack_top;
 	state->pref_height_stack.bottom_val = state->pref_height_nil_stack_top.v;
 	state->pref_height_stack.free = 0;

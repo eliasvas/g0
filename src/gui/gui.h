@@ -15,6 +15,7 @@ typedef enum {
 } Gui_Axis;
 
 typedef enum {
+  GUI_SIZE_KIND_NULL,
   GUI_SIZE_KIND_PIXELS,
   GUI_SIZE_KIND_TEXT_CONTENT,
   GUI_SIZE_KIND_PARENT_PCT,
@@ -26,7 +27,6 @@ typedef struct {
   f32 value;
   f32 strictness;
 } Gui_Size;
-
 
 typedef enum {
   GB_FLAG_CLICKABLE             = (1 << 0),
@@ -42,6 +42,8 @@ typedef enum {
   GB_FLAG_DRAW_TEXT             = (1 << 10),
   GB_FLAG_CLIP                  = (1 << 11),
   GB_FLAG_HOVERING              = (1 << 12),
+  GB_FLAG_OVERFLOW_X            = (1 << 13),
+  GB_FLAG_OVERFLOW_Y            = (1 << 14),
 } Gui_Box_Flags;
 
 typedef u64 Gui_Key;
@@ -103,11 +105,11 @@ typedef struct Gui_ChildLayoutAxisNode Gui_ChildLayoutAxisNode; struct Gui_Child
 
 typedef enum {
 	GUI_SIGNAL_FLAG_LMB_PRESSED  = (1<<0),
-	GUI_SIGNAL_FLAG_MMB_PRESSED  = (1<<2),
-	GUI_SIGNAL_FLAG_RMB_PRESSED  = (1<<3),
-	GUI_SIGNAL_FLAG_LMB_RELEASED = (1<<4),
-	GUI_SIGNAL_FLAG_MMB_RELEASED = (1<<5),
-	GUI_SIGNAL_FLAG_RMB_RELEASED = (1<<6),
+	GUI_SIGNAL_FLAG_MMB_PRESSED  = (1<<1),
+	GUI_SIGNAL_FLAG_RMB_PRESSED  = (1<<2),
+	GUI_SIGNAL_FLAG_LMB_RELEASED = (1<<3),
+	GUI_SIGNAL_FLAG_MMB_RELEASED = (1<<4),
+	GUI_SIGNAL_FLAG_RMB_RELEASED = (1<<5),
 	GUI_SIGNAL_FLAG_MOUSE_HOVER  = (1<<7),
 	GUI_SIGNAL_FLAG_SCROLLED     = (1<<7),
 	// TODO -- maybe we need one dragging for each mouse key
@@ -255,6 +257,7 @@ Gui_Size gui_pop_pref_size(Gui_Axis axis);
 
 // widgets
 Gui_Signal gui_button(char *str);
+Gui_Signal gui_pane(char *str);
 Gui_Signal gui_spacer(Gui_Size size);
 
 #endif

@@ -140,27 +140,32 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 		box->flags |= flags;
 		box->child_layout_axis = gui_top_child_layout_axis();
 		// We are doing all layouting here, we should probably just traverse the hierarchy like Ryan says
+
 		if (state->fixed_x_stack.top != &state->fixed_x_nil_stack_top) {
 			box->fixed_pos.raw[GUI_AXIS_X] = state->fixed_x_stack.top->v;
 			box->flags |= GB_FLAG_FIXED_X;
 		}
+
 		if (state->fixed_y_stack.top != &state->fixed_y_nil_stack_top) {
 			box->fixed_pos.raw[GUI_AXIS_Y] = state->fixed_y_stack.top->v;
 			box->flags |= GB_FLAG_FIXED_Y;
 		}
-		// FIXED_WIDTH/HEIGHT have NO pref size (GUI_SIZEKIND_NULL) so their fixed_size will stay the same
+
+		// FIXED_WIDTH/HEIGHT have NO pref size (GUI_SIZE_KIND_NULL) so their fixed_size will stay the same
 		if (state->fixed_width_stack.top != &state->fixed_width_nil_stack_top) {
 			box->fixed_size.raw[GUI_AXIS_X] = state->fixed_width_stack.top->v;
 			box->flags |= GB_FLAG_FIXED_WIDTH;
 		}else {
 			box->pref_size[GUI_AXIS_X] = gui_top_pref_width();
 		}
+
 		if (state->fixed_height_stack.top != &state->fixed_height_nil_stack_top) {
 			box->fixed_size.raw[GUI_AXIS_Y] = state->fixed_height_stack.top->v;
 			box->flags |= GB_FLAG_FIXED_HEIGHT;
 		}else {
 			box->pref_size[GUI_AXIS_Y] = gui_top_pref_height();
 		}
+
 		box->color = gui_top_bg_color();
 	}
 
@@ -201,6 +206,13 @@ Gui_Signal gui_button(char *str) {
 	return signal;
 }
 
+Gui_Signal gui_pane(char *str) {
+	Gui_Box *w = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND, str);
+	Gui_Signal signal = gui_get_signal_for_box(w);
+	return signal;
+}
+
+
 Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
 	Gui_Signal signal = {0};
 	signal.box = box;
@@ -227,9 +239,10 @@ Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
 	///////////////////////////////////
 
 	// if mouse inside box, the box is HOT
+
 	if (mouse_inside_box && (box->flags & GB_FLAG_CLICKABLE)) {
 		gui_get_ui_state()->hot_box_key = box->key;
-		box->flags |= GB_FLAG_HOVERING;
+		signal.flags |= GUI_SIGNAL_FLAG_MOUSE_HOVER;
 	}
 	// if mouse inside box AND mouse button pressed, box is ACTIVE, PRESS event
 	for (each_enumv(Input_Mouse_Button, INPUT_MOUSE, mk)) {
@@ -382,22 +395,170 @@ void gui_frame_end() {
 // Gui Layouting 
 ///////////////////////////////////
 
-void gui_layout_root(Gui_Box *root, Gui_Axis axis)  {
-	for(Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
-    child->r.p0.raw[axis] = root->r.p0.raw[axis] + child->fixed_pos.raw[axis] - root->view_off.raw[axis];
-    child->r.dim.raw[axis] = child->fixed_size.raw[axis];
-	}
-
-  // do the same for all nodes and their children in hierarchy
+void gui_layout_calc_constant_sizes(Gui_Box *root, Gui_Axis axis) {
+  Gui_Context *state = gui_get_ui_state();
+  // find the fixed size of the box
+  if (root->pref_size[axis].kind == GUI_SIZE_KIND_PIXELS) {
+      root->fixed_size.raw[axis] = root->pref_size[axis].value;
+  }
+  if (root->pref_size[axis].kind == GUI_SIZE_KIND_TEXT_CONTENT) {
+      f32 padding = root->pref_size[axis].value;
+      f32 text_size = 0;
+      // TODO: make a font_util_measure_text_dim? :)
+      if (axis == GUI_AXIS_X) {
+        text_size = font_util_measure_text_width(state->font, root->str, state->font_scale);
+      } else {
+        text_size = font_util_measure_text_height(state->font, root->str, state->font_scale);
+      }
+      root->fixed_size.raw[axis] = padding + text_size;
+  }
+  // loop through all the hierarchy
   for(Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
-    gui_layout_root(child, axis);
+    gui_layout_calc_constant_sizes(child, axis);
   }
 }
 
-///////////////////////////////////
-// Gui Rendering
-///////////////////////////////////
+void gui_layout_calc_upward_dependent_sizes(Gui_Box *root, Gui_Axis axis) {
+  Gui_Box *fixed_parent = gui_box_nil_id();
+  if (root->pref_size[axis].kind == GUI_SIZE_KIND_PARENT_PCT) {
+    fixed_parent = gui_box_nil_id();
+    for(Gui_Box *box= root->parent; !gui_box_is_nil(box); box = box->parent) {
+      if ( (box->flags & (GB_FLAG_FIXED_WIDTH<<axis)) ||
+        box->pref_size[axis].kind == GUI_SIZE_KIND_PIXELS ||
+        box->pref_size[axis].kind == GUI_SIZE_KIND_TEXT_CONTENT||
+        box->pref_size[axis].kind == GUI_SIZE_KIND_PARENT_PCT) {
+        fixed_parent = box;
+        break;
+      }
+    }
+    root->fixed_size.raw[axis] = fixed_parent->fixed_size.raw[axis] * root->pref_size[axis].value;
+  }
+	for(Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
+    gui_layout_calc_upward_dependent_sizes(child, axis);
+	}
+}
 
+void gui_layout_calc_downward_dependent_sizes(Gui_Box *root, Gui_Axis axis) {
+  // loop through all the hierarchy
+	for(Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
+        gui_layout_calc_downward_dependent_sizes(child, axis);
+	}
+  if (root->pref_size[axis].kind == GUI_SIZE_KIND_CHILDREN_SUM) {
+    f32 sum = 0; 
+    for(Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
+      if (!(child->flags & (GB_FLAG_FIXED_X<<axis))) {
+        if (axis == root->child_layout_axis) {
+          sum += child->fixed_size.raw[axis];
+        } else {
+          sum = maximum(sum, child->fixed_size.raw[axis]);
+        }
+      }
+    }
+    root->fixed_size.raw[axis] = sum;
+  }
+}
+
+void gui_layout_calc_solve_constraints(Gui_Box *root, Gui_Axis axis) {
+  // fixup when we are NOT current layout axis
+  if (axis != root->child_layout_axis && !(root->flags & (GB_FLAG_OVERFLOW_X<<axis))) {
+    f32 max_allowed_size = root->fixed_size.raw[axis];
+    for (Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
+      if (!(child->flags & (GB_FLAG_FIXED_X<<axis))) {
+        f32 child_size = child->fixed_size.raw[axis];
+        f32 fixup_needed = child_size - max_allowed_size;
+        fixup_needed = maximum(0, minimum(fixup_needed, child_size));
+        if (fixup_needed > 0) {
+          child->fixed_size.raw[axis] -= fixup_needed;
+        }
+      }
+    }
+  }
+  if (axis == root->child_layout_axis && !(root->flags & (GB_FLAG_OVERFLOW_X<<axis))) {
+    f32 max_allowed_size = root->fixed_size.raw[axis];
+    f32 total_size = 0;
+    f32 total_weighed_size = 0;
+    for (Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
+      if (!(child->flags & (GB_FLAG_FIXED_X<<axis))) {
+        total_size += child->fixed_size.raw[axis];
+        total_weighed_size += child->fixed_size.raw[axis] * (1.0f - child->pref_size[axis].strictness);
+      }
+    }
+    f32 violation = total_size - max_allowed_size;
+
+    if (violation > 0.0f) {
+      f32 *child_fixup_array = arena_push_array(gui_get_build_arena(), f32, root->child_count);
+      u32 child_idx = 0;
+      for (Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next, ++child_idx) {
+        if (!(child->flags & (GB_FLAG_FIXED_X<<axis))) {
+          f32 child_weighed_size = child->fixed_size.raw[axis] * (1.0f - child->pref_size[axis].strictness);
+          child_weighed_size = maximum(0.0f, child_weighed_size);
+          child_fixup_array[child_idx] = child_weighed_size;
+        }
+      }
+
+      child_idx = 0;
+      for (Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next, ++child_idx) {
+        if (!(child->flags & (GB_FLAG_FIXED_X<<axis))) {
+          // this percentage will be applied to ALL child widgets
+          f32 fixup_needed = (violation / (f32)total_weighed_size);
+          fixup_needed = minimum(maximum(0.0f,fixup_needed),1.0f);
+          child->fixed_size.raw[axis] -= fixup_needed * child_fixup_array[child_idx];
+        }
+      }
+    }
+  }
+
+  // Re-adjust fixed size of children with Parent_Pct before solving any more constraints
+  // Not sure this is needed..
+  /*
+  if (root->flags & (GB_FLAG_OVERFLOW_X<<axis)) {
+    for(Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
+      if (child->pref_size[axis].kind == GUI_SIZE_KIND_PARENT_PCT) {
+        child->fixed_size.raw[axis] = root->fixed_size.raw[axis] * child->pref_size[axis].value;
+      }
+    }
+  }
+  */
+
+  // do the same for all children nodes and their children in hierarchy
+  for(Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
+      gui_layout_calc_solve_constraints(child, axis);
+  }
+}
+
+void gui_layout_calc_final_rects(Gui_Box *root, Gui_Axis axis) {
+  f32 layout_pos = 0;
+  // do layouting for all children (only root's children)
+  for(Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
+    if (!(child->flags & (GB_FLAG_FIXED_X<<axis))) {
+      child->fixed_pos.raw[axis] = layout_pos;
+      // advance layout offset
+      if (root->child_layout_axis == axis) {
+        layout_pos += child->fixed_size.raw[axis];
+      }
+    }
+    // HERE we view scroll (-=view_off)
+    child->r.p0.raw[axis] = root->r.p0.raw[axis] + child->fixed_pos.raw[axis] - root->view_off.raw[axis];
+    child->r.dim.raw[axis] = child->fixed_size.raw[axis];
+  }
+
+  // do the same for all nodes and their children in hierarchy
+  for(Gui_Box *child = root->first; !gui_box_is_nil(child); child = child->next) {
+    gui_layout_calc_final_rects(child, axis);
+  }
+}
+
+void gui_layout_root(Gui_Box *root, Gui_Axis axis)  {
+  gui_layout_calc_constant_sizes(root, axis);
+  gui_layout_calc_upward_dependent_sizes(root,axis);
+  gui_layout_calc_downward_dependent_sizes(root,axis);
+  gui_layout_calc_solve_constraints(root,axis);
+  gui_layout_calc_final_rects(root, axis);
+}
+
+///////////////////////////////////
+// Gui Rendering (Platform Specific)
+///////////////////////////////////
 
 void gui_draw_rect(rect r, v4 c) {
   Gui_Context *state = gui_get_ui_state();
@@ -435,8 +596,10 @@ void gui_render_hierarchy(Gui_Box *box) {
   // TODO: clipping
 	if (box->flags & GB_FLAG_DRAW_BACKGROUND) {
     gui_draw_rect(box->r, box->color);
-    gui_draw_text(box->r, box->color, box->str);
 	}
+	if (box->flags & GB_FLAG_DRAW_TEXT) {
+    gui_draw_text(box->r, box->color, box->str);
+  }
 
 	// iterate through hierarchy
 	for(Gui_Box *child = box->first; !gui_box_is_nil(child); child = child->next) {
