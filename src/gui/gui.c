@@ -21,6 +21,50 @@ void gui_context_init(Arena *temp_arena, Font_Info *font) {
 
   g_gui_ctx.slot_count = GUI_SLOT_COUNT;
   g_gui_ctx.slots = arena_push_array(g_gui_ctx.persistent_arena, Gui_Box_Hash_Slot, g_gui_ctx.slot_count);
+
+  g_gui_ctx.root_panel = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
+  g_gui_ctx.root_panel->parent_pct = 1.0;
+  g_gui_ctx.root_panel->split_axis = GUI_AXIS_X;
+  g_gui_ctx.root_panel->label = "root_panel";
+
+  // DUMMY hierarchy for testing
+  Gui_Panel *c1 = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
+  c1->label = "c1";
+  c1->parent_pct = 0.4;
+  c1->split_axis = GUI_AXIS_X;
+  dll_push_back(g_gui_ctx.root_panel->first, g_gui_ctx.root_panel->last, c1);
+  c1->parent = g_gui_ctx.root_panel;
+  assert(c1->parent == g_gui_ctx.root_panel);
+
+  /*
+  Gui_Panel *c1u = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
+  c1->label = "c1u";
+  c1->parent_pct = 0.2;
+  c1->split_axis = GUI_AXIS_Y;
+  dll_push_back(c1->first, c1->last, c1u);
+  c1->parent = g_gui_ctx.root_panel;
+
+  Gui_Panel *c1d = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
+  c1->label = "c1d";
+  c1->parent_pct = 0.8;
+  c1->split_axis = GUI_AXIS_Y;
+  dll_push_back(c1->first, c1->last, c1d);
+  c1->parent = g_gui_ctx.root_panel;
+  */
+
+
+
+  Gui_Panel *c2 = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
+  c2->label = "c2";
+  c2->parent_pct = 0.6;
+  c2->split_axis = GUI_AXIS_X;
+  dll_push_back(g_gui_ctx.root_panel->first, g_gui_ctx.root_panel->last, c2);
+  c2->parent = g_gui_ctx.root_panel;
+  assert(c1->next == c2);
+  assert(c1->parent == g_gui_ctx.root_panel);
+  assert(c2->parent == g_gui_ctx.root_panel);
+  // ---------------------------------
+
 }
 
 Gui_Context* gui_get_ui_state() {
@@ -84,7 +128,7 @@ Gui_Box* gui_box_lookup_from_key(Gui_Box_Flags flags, Gui_Key key) {
 
 Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
   Gui_Context *state = gui_get_ui_state();
-	Gui_Box *parent = gui_top_parent();
+  Gui_Box *parent = gui_top_parent();
 
   // Look up to slot based cache to find the box
 	Gui_Box *box = gui_box_lookup_from_key(flags, key);
@@ -207,7 +251,7 @@ Gui_Signal gui_button(char *str) {
 }
 
 Gui_Signal gui_pane(char *str) {
-	Gui_Box *w = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND, str);
+	Gui_Box *w = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, str);
 	Gui_Signal signal = gui_get_signal_for_box(w);
 	return signal;
 }
@@ -219,17 +263,17 @@ Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
   v2 mp = input_get_mouse_pos();
 
 	rect r = box->r;
-  /*
-	// if a parent has FLAG_CLIP, we intersect its childrens rects to clip them
-  for(Gui_Box *p = box->parent; !gui_box_is_nil(p); p = p->parent) {
-		if (p->flags & GB_FLAG_CLIP) {
-			r = gui_intersect_rects(box->r,p->r);
-			break;
-		}
-	}
-  */
 
+  // If parent has GB_FLAG_CLIP, we test mouse intersection only inside parent box
 	b32 mouse_inside_box = rect_isect_point(r, mp);
+  if (mouse_inside_box && (box->flags & (GB_FLAG_CLICKABLE|GB_FLAG_VIEW_SCROLL_X|GB_FLAG_VIEW_SCROLL_Y))) {
+    for (Gui_Box *parent = box->parent; !gui_box_is_nil(parent); parent = parent->parent) {
+      if (parent->flags & GB_FLAG_CLIP) {
+        mouse_inside_box = rect_isect_point(parent->r, mp);
+        break;
+      } 
+    }
+  }
 
 	// perform scrolling via scroll wheel if widget in focus
 	//if (mouse_inside_box && (box->flags & GB_FLAG_SCROLL)) { signal.flags |= GUI_SIGNAL_FLAG_SCROLLED; }
@@ -329,6 +373,8 @@ void gui_build_begin(void) {
 		gui_get_ui_state()->hot_box_key = gui_key_zero();
 	}
 
+  // build the panel hierarchy
+  gui_panel_layout_panels_and_boundaries(gui_get_ui_state()->root_panel, (rect){{0,0,gui_get_ui_state()->screen_dim.x, gui_get_ui_state()->screen_dim.y}});
 }
 
 void gui_build_end(void) {
@@ -607,3 +653,136 @@ void gui_render_hierarchy(Gui_Box *box) {
 	}
 }
 
+///////////////////////////////////
+// Gui Panels
+///////////////////////////////////
+
+// TODO: Maybe we should make a gui_panel_nil_id() too?
+Gui_Panel *gui_panel_traverse_dfs_preorder(Gui_Panel *panel) {
+  Gui_Panel *itr = nullptr;
+  if (panel->first != nullptr) { // we go down the hierarchy
+    itr = panel->first;
+  } else { // we go up the hierarchy
+    Gui_Panel *p = panel;
+    while (p != nullptr) {
+      if (p->next != nullptr) {
+        itr = p->next;
+        break;
+      }
+      p = p->parent;
+    }
+  }
+  return itr;
+}
+
+rect gui_panel_get_rect_from_parent_rect(Gui_Panel *panel, rect parent_rect) {
+  rect r = parent_rect;
+  Gui_Panel *parent = panel->parent;
+  if (parent != nullptr) {
+    Gui_Axis axis = parent->split_axis;
+    Gui_Panel *child = parent->first;
+    v2 running_pos = v2m(r.x, r.y);
+    while (child != nullptr && child != panel) {
+      if (axis == GUI_AXIS_X) running_pos.x += parent_rect.w * child->parent_pct;
+      if (axis == GUI_AXIS_Y) running_pos.y += parent_rect.h * child->parent_pct;
+      child = child->next;
+    }
+    r = (rect){{running_pos.x, running_pos.y, parent_rect.w * ((axis == GUI_AXIS_X) ? panel->parent_pct : 1), parent_rect.h * ((axis == GUI_AXIS_Y) ? panel->parent_pct : 1)}};
+  }
+  return r;
+}
+
+rect gui_panel_get_rect(Gui_Panel *panel, rect root_rect) {
+  rect r = root_rect;
+  Gui_Panel *itr = panel;
+  while ((itr != nullptr) && (itr->parent != nullptr)) {
+    gui_push_panel_itr((Gui_Panel_Itr){itr, itr->parent});
+    itr = itr->parent;
+  }
+
+  while (!gui_empty_panel_itr()) {
+    Gui_Panel_Itr panel_itr = gui_pop_panel_itr();
+    r = gui_panel_get_rect_from_parent_rect(panel_itr.child, r);
+  }
+
+  return r;
+}
+
+void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rect) {
+#define BOUNDARY_THICKNESS 2
+
+  Gui_Panel *itr = root_panel;
+  while (itr != nullptr) {
+    Gui_Panel *panel = itr;
+    rect r = gui_panel_get_rect(panel, root_rect);
+
+    if (panel->first == nullptr) {
+      gui_set_next_fixed_x(r.x + BOUNDARY_THICKNESS);
+      gui_set_next_fixed_y(r.y + BOUNDARY_THICKNESS);
+      gui_set_next_fixed_width(r.w - BOUNDARY_THICKNESS*2);
+      gui_set_next_fixed_height(r.h - BOUNDARY_THICKNESS*2);
+      gui_set_next_child_layout_axis(GUI_AXIS_Y); // ?
+      gui_set_next_bg_color(v4m(0.2,0.2,0.2,0.7)); // TODO: styles?
+      char name[64];
+      sprintf(name, "panel_%s", panel->label);
+      Gui_Signal s = gui_pane(name);
+      s.flags &= ~GB_FLAG_DRAW_TEXT;
+
+    }
+
+    itr = gui_panel_traverse_dfs_preorder(itr);
+  }
+   
+  itr = root_panel;
+  while (itr != nullptr) {
+    Gui_Panel *panel = itr;
+    // 1. find panel rect
+    //rect r = gui_panel_get_rect(panel, root_rect);
+
+    //printf("panel: %f has rect %f %f %f %f\n", panel->parent_pct, r.x,r.y,r.w,r.h);
+    // 2. loop through every child that has a sibling next to it - otherwise no boundary
+    Gui_Panel *child = panel->first;
+    while (child != nullptr && child->next != nullptr) {
+      rect child_rect = gui_panel_get_rect(child, root_rect);
+
+      // 3. Calculate boundary rect and make a FIXED Gui_Box
+      rect boundary_rect = child_rect;
+      if (panel->split_axis == GUI_AXIS_X) {
+        // TODO: why 2 and 4? maybe we just need to scale actuall thickness.. am i dumb
+        boundary_rect.x += child_rect.w - BOUNDARY_THICKNESS*2;
+        boundary_rect.w = BOUNDARY_THICKNESS*4;
+      } else {
+        boundary_rect.y += child_rect.h - BOUNDARY_THICKNESS*2;
+        boundary_rect.h = BOUNDARY_THICKNESS*4;
+      } 
+      gui_set_next_fixed_x(boundary_rect.x);
+      gui_set_next_fixed_y(boundary_rect.y);
+      gui_set_next_fixed_width(boundary_rect.w);
+      gui_set_next_fixed_height(boundary_rect.h);
+      gui_set_next_child_layout_axis(GUI_AXIS_Y); // ?
+      gui_set_next_bg_color(v4m(0.1,0.9,0.9,0.7));
+      char name[64];
+      sprintf(name, "drag_boundary_%s", child->label);
+      Gui_Signal s = gui_button(name);
+      s.box->flags &= ~GB_FLAG_DRAW_TEXT;
+
+      // TODO: fix this dragging its.. HORRIBLE?
+      if (gui_get_ui_state()->active_box_keys[INPUT_MOUSE_LMB] == s.box->key) {
+        //platform_set_cursor((child->split_axis == GUI_AXIS_X) ?  then NORTH_SOUTH else WEST_EAST);
+        v2 mdelta = input_get_mouse_delta();
+        f32 delta_on_split_axis = mdelta.raw[child->split_axis];
+        Gui_Panel *left_child = child;
+        Gui_Panel *right_child = child->next;
+
+        f32 parent_pct_movement = delta_on_split_axis * gui_get_ui_state()->dt * 0.10;
+        left_child->parent_pct += parent_pct_movement;
+        right_child->parent_pct -= parent_pct_movement;
+
+      }
+
+      child = child->next;
+    }
+    itr = gui_panel_traverse_dfs_preorder(itr);
+  }
+
+}

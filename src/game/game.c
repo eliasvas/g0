@@ -125,36 +125,42 @@ void game_render(Game_State *gs, float dt) {
 
   gui_frame_begin(gs->screen_dim, dt);
 
-  gui_set_next_bg_color(v4m(0.1,0.1,0.1,0.0));
-  gui_set_next_rect((rect){{0,0,800,600}});
-  gui_set_next_child_layout_axis(GUI_AXIS_X);
-  Gui_Box *pm = gui_pane("pane_master").box;
-  gui_set_next_parent(pm);
 
-  // TODO: Maybe set a default color that is grayish
-  gui_set_next_bg_color(v4m(0.6,0.6,0.6,1));
-  gui_set_next_rect((rect){{100,100,300,300}});
-  gui_set_next_child_layout_axis(GUI_AXIS_X);
-  Gui_Box *p = gui_pane("pane").box;
-  gui_push_parent(p);
+  Gui_Box *right = gui_box_lookup_from_key(0, gui_key_from_str("panel_c2"));
+  assert(!gui_box_is_nil(right));
+  gui_push_parent(right);
 
   // Button1
-	gui_set_next_pref_size(gui_top_parent()->child_layout_axis, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 120, 1.0});
+	gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 120, 1.0});
   gui_set_next_bg_color(v4m(0.4,0.4,0.4,1));
   //if (gui_button("button1").flags & GUI_SIGNAL_FLAG_LMB_PRESSED) {
   if (gui_button("button1").flags & GUI_SIGNAL_FLAG_MOUSE_HOVER) {
-
+    printf("hover over button1\n");
   }
   // Spacer 
-  gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 300, 0.0});
+  //gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 300, 0.0});
   // Button2 
-  gui_set_next_pref_size(gui_top_parent()->child_layout_axis, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 120, 1.0});
+  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 120, 1.0});
   gui_set_next_bg_color(v4m(0.3,0.3,0.3,1));
-  if (gui_button("Button2").flags & GUI_SIGNAL_FLAG_LMB_PRESSED) {
+  if (gui_button("button2").flags & GUI_SIGNAL_FLAG_LMB_PRESSED) {
     printf("heyo2\n");
   }
-
   gui_pop_parent();
+
+  Gui_Box *left = gui_box_lookup_from_key(0, gui_key_from_str("panel_c1"));
+  assert(!gui_box_is_nil(left));
+  gui_push_parent(left);
+  for (u32 i = 0; i < 10; i+=1) {
+    gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
+    gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_bg_color(v4m(i * 0.1, 0.2, 0.4, 1));
+    char name[64];
+    sprintf(name, "button_%i", i);
+    gui_button(name);
+  }
+  gui_pop_parent();
+
+
   gui_frame_end();
 
 }

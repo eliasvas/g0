@@ -16,7 +16,7 @@ git clone --recursive https://github.com/eliasvas/g0
 ```bash
 ./build.sh
 ```
-### Linux (inside vim
+### Linux (inside vim)
 ```
 # add these to your .vimrc
 nnoremap <F7> :!./build.sh<CR>
