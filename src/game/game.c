@@ -130,26 +130,93 @@ void game_render(Game_State *gs, float dt) {
   assert(!gui_box_is_nil(right));
   gui_push_parent(right);
 
-  // Button1
-	gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 120, 1.0});
-  gui_set_next_bg_color(v4m(0.4,0.4,0.4,1));
-  //if (gui_button("button1").flags & GUI_SIGNAL_FLAG_LMB_PRESSED) {
-  if (gui_button("button1").flags & GUI_SIGNAL_FLAG_MOUSE_HOVER) {
-    printf("hover over button1\n");
-  }
-  // Spacer 
-  //gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 300, 0.0});
-  // Button2 
-  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 120, 1.0});
-  gui_set_next_bg_color(v4m(0.3,0.3,0.3,1));
-  if (gui_button("button2").flags & GUI_SIGNAL_FLAG_LMB_PRESSED) {
-    printf("heyo2\n");
+  static v4 dummy_color_palette[4][6] = {
+    {
+      (v4){{0.65f, 0.28f, 0.24f, 1.0f}},
+      (v4){{0.68f, 0.36f, 0.30f, 1.0f}},
+      (v4){{0.75f, 0.58f, 0.25f, 1.0f}},
+      (v4){{0.15f, 0.46f, 0.44f, 1.0f}},
+      (v4){{0.28f, 0.34f, 0.55f, 1.0f}},
+      (v4){{0.50f, 0.28f, 0.58f, 1.0f}},
+    },
+    {
+      (v4){{0.60f, 0.38f, 0.20f, 1.0f}},
+      (v4){{0.36f, 0.58f, 0.28f, 1.0f}},
+      (v4){{0.28f, 0.54f, 0.32f, 1.0f}},
+      (v4){{0.22f, 0.46f, 0.70f, 1.0f}},
+      (v4){{0.30f, 0.38f, 0.40f, 1.0f}},
+      (v4){{0.44f, 0.32f, 0.56f, 1.0f}},
+    },
+    {
+      (v4){{0.55f, 0.25f, 0.22f, 1.0f}},
+      (v4){{0.68f, 0.38f, 0.25f, 1.0f}},
+      (v4){{0.72f, 0.65f, 0.25f, 1.0f}},
+      (v4){{0.12f, 0.36f, 0.36f, 1.0f}},
+      (v4){{0.20f, 0.28f, 0.50f, 1.0f}},
+      (v4){{0.36f, 0.24f, 0.48f, 1.0f}},
+    },
+    {
+      (v4){{0.55f, 0.55f, 0.55f, 1.0f}},
+      (v4){{0.48f, 0.52f, 0.54f, 1.0f}},
+      (v4){{0.52f, 0.60f, 0.53f, 1.0f}},
+      (v4){{0.56f, 0.52f, 0.44f, 1.0f}},
+      (v4){{0.54f, 0.50f, 0.62f, 1.0f}},
+      (v4){{0.65f, 0.65f, 0.65f, 1.0f}},
+    }
+  };
+  for (u32 i = 0; i < 3; i+=1) {
+    char pane_name[64];
+    sprintf(pane_name, "mpane%i", i);
+    gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_child_layout_axis(GUI_AXIS_X);
+    Gui_Box *panebox= gui_pane(pane_name).box;
+    panebox->flags = GB_FLAG_OVERFLOW_X;
+    gui_push_parent(panebox);
+
+    for (u32 j = 0; j < 6; j+=1) {
+      gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 100, 0.0});
+      gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+      gui_set_next_bg_color(v4_multf(dummy_color_palette[i][j], 1.0));
+      char name[64];
+      sprintf(name, "b%i%i", i, j);
+      gui_button(name);
+    }
+    gui_pop_parent();
   }
   gui_pop_parent();
 
-  Gui_Box *left = gui_box_lookup_from_key(0, gui_key_from_str("panel_c1"));
-  assert(!gui_box_is_nil(left));
-  gui_push_parent(left);
+  Gui_Box *leftup = gui_box_lookup_from_key(0, gui_key_from_str("panel_c1u"));
+  assert(!gui_box_is_nil(leftup));
+  gui_push_parent(leftup);
+  // FIXME: These char[] are stack variables, we shouldn't do this..
+  char fps_name[64];
+  sprintf(fps_name, "fps: %f", 1.0/dt); // TODO: make an API that will not consider %% arguments, so we CAN animate them
+  gui_set_next_bg_color(v4m(0.4,0.3,0.2,1));
+  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_label(fps_name);
+
+  v2 mp = input_get_mouse_pos();
+  char mp_name[64];
+  sprintf(mp_name, "mp: (%.0f,%.0f)", mp.x, mp.y); // TODO: make an API that will not consider %% arguments, so we CAN animate them
+  gui_set_next_bg_color(v4m(0.4,0.2,0.3,1));
+  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_label(mp_name);
+
+  char pers_name[64];
+  sprintf(pers_name, "allocd: %lu bytes", gs->persistent_arena->committed); // TODO: make an API that will not consider %% arguments, so we CAN animate them
+  gui_set_next_bg_color(v4m(0.2,0.3,0.4,1));
+  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_label(pers_name);
+
+  gui_pop_parent();
+
+  Gui_Box *leftdown = gui_box_lookup_from_key(0, gui_key_from_str("panel_c1d"));
+  assert(!gui_box_is_nil(leftdown));
+  gui_push_parent(leftdown);
   for (u32 i = 0; i < 10; i+=1) {
     gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
     gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
@@ -159,6 +226,7 @@ void game_render(Game_State *gs, float dt) {
     gui_button(name);
   }
   gui_pop_parent();
+
 
 
   gui_frame_end();

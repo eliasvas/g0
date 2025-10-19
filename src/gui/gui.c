@@ -31,28 +31,24 @@ void gui_context_init(Arena *temp_arena, Font_Info *font) {
   Gui_Panel *c1 = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
   c1->label = "c1";
   c1->parent_pct = 0.4;
-  c1->split_axis = GUI_AXIS_X;
+  c1->split_axis = GUI_AXIS_Y;
   dll_push_back(g_gui_ctx.root_panel->first, g_gui_ctx.root_panel->last, c1);
   c1->parent = g_gui_ctx.root_panel;
   assert(c1->parent == g_gui_ctx.root_panel);
 
-  /*
   Gui_Panel *c1u = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
-  c1->label = "c1u";
-  c1->parent_pct = 0.2;
-  c1->split_axis = GUI_AXIS_Y;
+  c1u->label = "c1u";
+  c1u->parent_pct = 0.2;
+  c1u->split_axis = GUI_AXIS_Y;
   dll_push_back(c1->first, c1->last, c1u);
-  c1->parent = g_gui_ctx.root_panel;
+  c1u->parent = c1;
 
   Gui_Panel *c1d = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
-  c1->label = "c1d";
-  c1->parent_pct = 0.8;
-  c1->split_axis = GUI_AXIS_Y;
+  c1d->label = "c1d";
+  c1d->parent_pct = 0.8;
+  c1d->split_axis = GUI_AXIS_Y;
   dll_push_back(c1->first, c1->last, c1d);
-  c1->parent = g_gui_ctx.root_panel;
-  */
-
-
+  c1d->parent = c1;
 
   Gui_Panel *c2 = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
   c2->label = "c2";
@@ -67,12 +63,12 @@ void gui_context_init(Arena *temp_arena, Font_Info *font) {
 
 }
 
-Gui_Context* gui_get_ui_state() {
+Gui_Context* gui_get_ctx() {
   return &g_gui_ctx;
 }
 
 Arena *gui_get_build_arena() {
-	return gui_get_ui_state()->temp_arena;
+	return gui_get_ctx()->temp_arena;
 }
 ///////////////////////////////////
 // Gui Keying mechanism
@@ -115,8 +111,8 @@ Gui_Box* gui_box_lookup_from_key(Gui_Box_Flags flags, Gui_Key key) {
 	Gui_Box *res = gui_box_nil_id();
 
 	if (!gui_key_match(key, gui_key_zero())) {
-		u64 slot = key % gui_get_ui_state()->slot_count;
-		for (Gui_Box *box = gui_get_ui_state()->slots[slot].hash_first; !gui_box_is_nil(box); box = box->hash_next) {
+		u64 slot = key % gui_get_ctx()->slot_count;
+		for (Gui_Box *box = gui_get_ctx()->slots[slot].hash_first; !gui_box_is_nil(box); box = box->hash_next) {
 			if (gui_key_match(box->key, key)) {
 				res = box;
 				break;
@@ -127,7 +123,7 @@ Gui_Box* gui_box_lookup_from_key(Gui_Box_Flags flags, Gui_Key key) {
 }
 
 Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
-  Gui_Context *state = gui_get_ui_state();
+  Gui_Context *state = gui_get_ctx();
   Gui_Box *parent = gui_top_parent();
 
   // Look up to slot based cache to find the box
@@ -137,7 +133,7 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 	b32 box_is_transient = gui_key_match(key,gui_key_zero());
 
   // If we find the box to have updated frame_idx, its a double creation of same idx..
-  if(!box_first_time && box->last_used_frame_idx == gui_get_ui_state()->frame_idx) {
+  if(!box_first_time && box->last_used_frame_idx == gui_get_ctx()->frame_idx) {
 		box = gui_box_nil_id();
 		key = gui_key_zero();
 		box_first_time = 1;
@@ -146,12 +142,12 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 
   // If box was created this frame, allocate it, try to reuse Gui_Box's or allocate a new one
   if (box_first_time) {
-		box = box_is_transient ? 0 : gui_get_ui_state()->box_freelist;
+		box = box_is_transient ? 0 : gui_get_ctx()->box_freelist;
 		if (!gui_box_is_nil(box)) {
-			sll_stack_pop(gui_get_ui_state()->box_freelist);
+			sll_stack_pop(gui_get_ctx()->box_freelist);
 		}
 		else {
-			box = arena_push_array_nz(box_is_transient? gui_get_build_arena() : gui_get_ui_state()->persistent_arena, Gui_Box, 1);
+			box = arena_push_array_nz(box_is_transient? gui_get_build_arena() : gui_get_ctx()->persistent_arena, Gui_Box, 1);
 		}
 		M_ZERO_STRUCT(box);
 	}
@@ -161,14 +157,14 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 		box->first = box->last = box->next = box->prev = box->parent = gui_box_nil_id();
 		box->child_count = 0;
 		box->flags = 0;
-		box->last_used_frame_idx = gui_get_ui_state()->frame_idx;
+		box->last_used_frame_idx = gui_get_ctx()->frame_idx;
 		M_ZERO_ARRAY(box->pref_size);
 	}
 
   // hook into persistent table
 	if (box_first_time && !box_is_transient) {
-		u64 hash_slot = (u64)key % gui_get_ui_state()->slot_count;
-		dll_insert_NPZ(&g_nil_box, gui_get_ui_state()->slots[hash_slot].hash_first, gui_get_ui_state()->slots[hash_slot].hash_last, gui_get_ui_state()->slots[hash_slot].hash_last, box, hash_next, hash_prev);
+		u64 hash_slot = (u64)key % gui_get_ctx()->slot_count;
+		dll_insert_NPZ(&g_nil_box, gui_get_ctx()->slots[hash_slot].hash_first, gui_get_ctx()->slots[hash_slot].hash_last, gui_get_ctx()->slots[hash_slot].hash_last, box, hash_next, hash_prev);
 	}
 
   // hook into tree structure
@@ -230,11 +226,11 @@ Gui_Box *gui_box_build_from_str(Gui_Box_Flags flags, char *str) {
 }
 
 Gui_Key gui_get_hot_box_key() {
-	return gui_get_ui_state()->hot_box_key;
+	return gui_get_ctx()->hot_box_key;
 }
 
 Gui_Key gui_get_active_box_key(Input_Mouse_Button b) {
-	return gui_get_ui_state()->active_box_keys[b];
+	return gui_get_ctx()->active_box_keys[b];
 }
 
 
@@ -247,6 +243,15 @@ Gui_Signal gui_button(char *str) {
 									str);
 	Gui_Signal signal = gui_get_signal_for_box(w);
 	//if (signal.box->flags & GB_FLAG_HOVERING) { w->flags |= GB_FLAG_DRAW_BORDER; }
+	return signal;
+}
+
+Gui_Signal gui_label(char *str) {
+	Gui_Box *w = gui_box_build_from_str( GB_FLAG_DRAW_TEXT |
+									GB_FLAG_DRAW_BACKGROUND |
+									GB_FLAG_DRAW_HOT_ANIMATION,
+									str);
+	Gui_Signal signal = gui_get_signal_for_box(w);
 	return signal;
 }
 
@@ -285,13 +290,13 @@ Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
 	// if mouse inside box, the box is HOT
 
 	if (mouse_inside_box && (box->flags & GB_FLAG_CLICKABLE)) {
-		gui_get_ui_state()->hot_box_key = box->key;
+		gui_get_ctx()->hot_box_key = box->key;
 		signal.flags |= GUI_SIGNAL_FLAG_MOUSE_HOVER;
 	}
 	// if mouse inside box AND mouse button pressed, box is ACTIVE, PRESS event
 	for (each_enumv(Input_Mouse_Button, INPUT_MOUSE, mk)) {
 		if (mouse_inside_box && input_mkey_pressed(mk)) {
-			gui_get_ui_state()->active_box_keys[mk] = box->key;
+			gui_get_ctx()->active_box_keys[mk] = box->key;
 			// TODO -- This is pretty crappy logic, fix someday
 			signal.flags |= (GUI_SIGNAL_FLAG_LMB_PRESSED << mk);
 			//gui_drag_set_current_mp();
@@ -306,16 +311,16 @@ Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
 	// if mouse inside box AND mouse button released and box was ACTIVE, reset hot/active RELEASE signal
 	for (each_enumv(Input_Mouse_Button, INPUT_MOUSE, mk)) {
 		if (mouse_inside_box && input_mkey_released(mk) && gui_key_match(gui_get_active_box_key(mk), box->key)) {
-			gui_get_ui_state()->hot_box_key = gui_key_zero();
-			gui_get_ui_state()->active_box_keys[mk]= gui_key_zero();
+			gui_get_ctx()->hot_box_key = gui_key_zero();
+			gui_get_ctx()->active_box_keys[mk]= gui_key_zero();
 			signal.flags |= (GUI_SIGNAL_FLAG_LMB_RELEASED << mk);
 		}
 	}
 	// if mouse outside box AND mouse button released and box was ACTIVE, reset hot/active
 	for (each_enumv(Input_Mouse_Button, INPUT_MOUSE, mk)) {
 		if (!mouse_inside_box && input_mkey_released(mk) && gui_key_match(gui_get_active_box_key(mk), box->key)) {
-			gui_get_ui_state()->hot_box_key = gui_key_zero();
-			gui_get_ui_state()->active_box_keys[mk] = gui_key_zero();
+			gui_get_ctx()->hot_box_key = gui_key_zero();
+			gui_get_ctx()->active_box_keys[mk] = gui_key_zero();
 		}
 	}
 	return signal;
@@ -334,7 +339,7 @@ Gui_Signal gui_spacer(Gui_Size size) {
 ///////////////////////////////////
 
 void gui_build_begin(void) {
-	//Gui_Context *state = gui_get_ui_state();
+	//Gui_Context *state = gui_get_ctx();
 	// We init all stacks here because they are STRICTLY per-frame data structures
 	gui_init_stacks();
 
@@ -343,7 +348,7 @@ void gui_build_begin(void) {
 	gui_set_next_child_layout_axis(GUI_AXIS_Y);
 	Gui_Box *root = gui_box_build_from_str(0, "ImRootPlsDontPutSameHashSomewhereElse");
 	gui_push_parent(root);
-  gui_get_ui_state()->root = root;
+  gui_get_ctx()->root = root;
 
 	// reset hot if box pruned
 	{
@@ -351,7 +356,7 @@ void gui_build_begin(void) {
 		Gui_Box *box = gui_box_lookup_from_key(0, hot_key);
 		b32 box_not_found = gui_box_is_nil(box);
 		if (box_not_found) {
-			gui_get_ui_state()->hot_box_key = gui_key_zero();
+			gui_get_ctx()->hot_box_key = gui_key_zero();
 		}
 	}
 
@@ -362,7 +367,7 @@ void gui_build_begin(void) {
 		Gui_Box *box = gui_box_lookup_from_key(0, active_key);
 		b32 box_not_found = gui_box_is_nil(box);
 		if (box_not_found) {
-			gui_get_ui_state()->active_box_keys[mk] = gui_key_zero();
+			gui_get_ctx()->active_box_keys[mk] = gui_key_zero();
 		}else {
 			active_exists = true;
 		}
@@ -370,15 +375,15 @@ void gui_build_begin(void) {
 
 	// reset hot if there is no active
 	if (!active_exists) {
-		gui_get_ui_state()->hot_box_key = gui_key_zero();
+		gui_get_ctx()->hot_box_key = gui_key_zero();
 	}
 
   // build the panel hierarchy
-  gui_panel_layout_panels_and_boundaries(gui_get_ui_state()->root_panel, (rect){{0,0,gui_get_ui_state()->screen_dim.x, gui_get_ui_state()->screen_dim.y}});
+  gui_panel_layout_panels_and_boundaries(gui_get_ctx()->root_panel, (rect){{0,0,gui_get_ctx()->screen_dim.x, gui_get_ctx()->screen_dim.y}});
 }
 
 void gui_build_end(void) {
-	Gui_Context *state = gui_get_ui_state();
+	Gui_Context *state = gui_get_ctx();
 	gui_pop_parent();
 
 	// prune unused boxes
@@ -417,7 +422,7 @@ void gui_build_end(void) {
 	}
 
 	// render eveything
-  gui_render_hierarchy(gui_get_ui_state()->root);
+  gui_render_hierarchy(gui_get_ctx()->root);
 
 	// clear previous frame's arena + advance frame_index
 	arena_clear(gui_get_build_arena());
@@ -442,7 +447,7 @@ void gui_frame_end() {
 ///////////////////////////////////
 
 void gui_layout_calc_constant_sizes(Gui_Box *root, Gui_Axis axis) {
-  Gui_Context *state = gui_get_ui_state();
+  Gui_Context *state = gui_get_ctx();
   // find the fixed size of the box
   if (root->pref_size[axis].kind == GUI_SIZE_KIND_PIXELS) {
       root->fixed_size.raw[axis] = root->pref_size[axis].value;
@@ -607,7 +612,7 @@ void gui_layout_root(Gui_Box *root, Gui_Axis axis)  {
 ///////////////////////////////////
 
 void gui_draw_rect(rect r, v4 c) {
-  Gui_Context *state = gui_get_ui_state();
+  Gui_Context *state = gui_get_ctx();
   R2D* text_rend = r2d_begin(state->temp_arena, &(R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, state->screen_dim);
   r2d_push_quad(text_rend, (R2D_Quad) {
       .dst_rect = *(R2D_Rect*)&r,
@@ -617,7 +622,7 @@ void gui_draw_rect(rect r, v4 c) {
 }
 
 void gui_draw_text(rect r, v4 c, char *s) {
-  Gui_Context *state = gui_get_ui_state();
+  Gui_Context *state = gui_get_ctx();
 
   rect label_rect = font_util_calc_text_rect(g_gui_ctx.font, s, v2m(0,0), state->font_scale);
   rect fitted_rect = rect_try_fit_inside(label_rect, r);
@@ -767,17 +772,20 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
       s.box->flags &= ~GB_FLAG_DRAW_TEXT;
 
       // TODO: fix this dragging its.. HORRIBLE?
-      if (gui_get_ui_state()->active_box_keys[INPUT_MOUSE_LMB] == s.box->key) {
+      if (gui_get_ctx()->active_box_keys[INPUT_MOUSE_LMB] == s.box->key) {
         //platform_set_cursor((child->split_axis == GUI_AXIS_X) ?  then NORTH_SOUTH else WEST_EAST);
         v2 mdelta = input_get_mouse_delta();
-        f32 delta_on_split_axis = mdelta.raw[child->split_axis];
+        //f32 delta_on_split_axis = mdelta.raw[child->split_axis];
+        f32 delta_on_split_axis = mdelta.raw[panel->split_axis];
         Gui_Panel *left_child = child;
         Gui_Panel *right_child = child->next;
 
-        f32 parent_pct_movement = delta_on_split_axis * gui_get_ui_state()->dt * 0.10;
+        f32 parent_pct_movement = delta_on_split_axis * gui_get_ctx()->dt * 0.10;
         left_child->parent_pct += parent_pct_movement;
+        left_child->parent_pct = clamp(left_child->parent_pct, 0, 1);
         right_child->parent_pct -= parent_pct_movement;
-
+        right_child->parent_pct = clamp(right_child->parent_pct, 0, 1);
+        printf("dragging panel %s frame %lu w/ delta %f\n", panel->label, gui_get_ctx()->frame_idx, delta_on_split_axis);
       }
 
       child = child->next;

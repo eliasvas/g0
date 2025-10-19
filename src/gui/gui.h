@@ -202,7 +202,7 @@ Gui_Key gui_key_zero(void);
 Gui_Key gui_key_from_str(char *s);
 b32 gui_key_match(Gui_Key a, Gui_Key b);
 
-Gui_Context* gui_get_ui_state();
+Gui_Context* gui_get_ctx();
 Gui_Box *gui_box_nil_id();
 b32 gui_box_is_nil(Gui_Box *box);
 Gui_Box *gui_box_make(Gui_Box_Flags flags, char *str);
@@ -284,6 +284,7 @@ Gui_Size gui_pop_pref_size(Gui_Axis axis);
 // widgets
 Gui_Signal gui_button(char *str);
 Gui_Signal gui_pane(char *str);
+Gui_Signal gui_label(char *str);
 Gui_Signal gui_spacer(Gui_Size size);
 
 

@@ -48,7 +48,7 @@ return (top == &state->name_lower##_nil_stack_top);\
 // This function should be huge and initialize ALL the UI stacks to empty
 // TODO -- MAYBE this should be just some macro (maybe), declarations too?
 void gui_init_stacks() {
-	Gui_Context *state = gui_get_ui_state();
+	Gui_Context *state = gui_get_ctx();
 	// -- parent stack initialization
 	state->parent_nil_stack_top.v = gui_box_nil_id();
 	state->parent_stack.top = &state->parent_nil_stack_top;
@@ -120,7 +120,7 @@ void gui_init_stacks() {
 }
 
 void gui_autopop_all_stacks() {
-	Gui_Context *state = gui_get_ui_state();
+	Gui_Context *state = gui_get_ctx();
 	if (state->parent_stack.auto_pop) { gui_pop_parent();state->parent_stack.auto_pop = 0; }
 	if (state->fixed_x_stack.auto_pop) { gui_pop_fixed_x();state->fixed_x_stack.auto_pop = 0; }
 	if (state->fixed_y_stack.auto_pop) { gui_pop_fixed_y();state->fixed_y_stack.auto_pop = 0; }
@@ -134,55 +134,55 @@ void gui_autopop_all_stacks() {
 	if (state->panel_itr_stack.auto_pop) { gui_pop_panel_itr();state->panel_itr_stack.auto_pop = 0; }
 }
 
-Gui_Box *gui_top_parent(void) { gui_stack_top_impl(gui_get_ui_state(), Parent, parent); }
-Gui_Box *gui_set_next_parent(Gui_Box *box) { gui_stack_set_next_impl(gui_get_ui_state(), Parent, parent, Gui_Box*, box); }
-Gui_Box *gui_push_parent(Gui_Box *box) { gui_stack_push_impl(gui_get_ui_state(), Parent, parent, Gui_Box*, box); }
-Gui_Box *gui_pop_parent(void) { gui_stack_pop_impl(gui_get_ui_state(), Parent, parent); }
+Gui_Box *gui_top_parent(void) { gui_stack_top_impl(gui_get_ctx(), Parent, parent); }
+Gui_Box *gui_set_next_parent(Gui_Box *box) { gui_stack_set_next_impl(gui_get_ctx(), Parent, parent, Gui_Box*, box); }
+Gui_Box *gui_push_parent(Gui_Box *box) { gui_stack_push_impl(gui_get_ctx(), Parent, parent, Gui_Box*, box); }
+Gui_Box *gui_pop_parent(void) { gui_stack_pop_impl(gui_get_ctx(), Parent, parent); }
 
-f32 gui_top_fixed_x(void) { gui_stack_top_impl(gui_get_ui_state(), Fixed_X, fixed_x); }
-f32 gui_set_next_fixed_x(f32 v) { gui_stack_set_next_impl(gui_get_ui_state(), Fixed_X, fixed_x, f32, v); }
-f32 gui_push_fixed_x(f32 v) { gui_stack_push_impl(gui_get_ui_state(), Fixed_X, fixed_x, f32, v); }
-f32 gui_pop_fixed_x(void) { gui_stack_pop_impl(gui_get_ui_state(), Fixed_X, fixed_x); }
+f32 gui_top_fixed_x(void) { gui_stack_top_impl(gui_get_ctx(), Fixed_X, fixed_x); }
+f32 gui_set_next_fixed_x(f32 v) { gui_stack_set_next_impl(gui_get_ctx(), Fixed_X, fixed_x, f32, v); }
+f32 gui_push_fixed_x(f32 v) { gui_stack_push_impl(gui_get_ctx(), Fixed_X, fixed_x, f32, v); }
+f32 gui_pop_fixed_x(void) { gui_stack_pop_impl(gui_get_ctx(), Fixed_X, fixed_x); }
 
-f32 gui_top_fixed_y(void) { gui_stack_top_impl(gui_get_ui_state(), Fixed_Y, fixed_y); }
-f32 gui_set_next_fixed_y(f32 v) { gui_stack_set_next_impl(gui_get_ui_state(), Fixed_Y, fixed_y, f32, v); }
-f32 gui_push_fixed_y(f32 v) { gui_stack_push_impl(gui_get_ui_state(), Fixed_Y, fixed_y, f32, v); }
-f32 gui_pop_fixed_y(void) { gui_stack_pop_impl(gui_get_ui_state(), Fixed_Y, fixed_y); }
+f32 gui_top_fixed_y(void) { gui_stack_top_impl(gui_get_ctx(), Fixed_Y, fixed_y); }
+f32 gui_set_next_fixed_y(f32 v) { gui_stack_set_next_impl(gui_get_ctx(), Fixed_Y, fixed_y, f32, v); }
+f32 gui_push_fixed_y(f32 v) { gui_stack_push_impl(gui_get_ctx(), Fixed_Y, fixed_y, f32, v); }
+f32 gui_pop_fixed_y(void) { gui_stack_pop_impl(gui_get_ctx(), Fixed_Y, fixed_y); }
 
-f32 gui_top_fixed_width(void) { gui_stack_top_impl(gui_get_ui_state(), Fixed_Width, fixed_width); }
-f32 gui_set_next_fixed_width(f32 v) { gui_stack_set_next_impl(gui_get_ui_state(), Fixed_Width, fixed_width, f32, v); }
-f32 gui_push_fixed_width(f32 v) { gui_stack_push_impl(gui_get_ui_state(), Fixed_Width, fixed_width, f32, v); }
-f32 gui_pop_fixed_width(void) { gui_stack_pop_impl(gui_get_ui_state(), Fixed_Width, fixed_width); }
+f32 gui_top_fixed_width(void) { gui_stack_top_impl(gui_get_ctx(), Fixed_Width, fixed_width); }
+f32 gui_set_next_fixed_width(f32 v) { gui_stack_set_next_impl(gui_get_ctx(), Fixed_Width, fixed_width, f32, v); }
+f32 gui_push_fixed_width(f32 v) { gui_stack_push_impl(gui_get_ctx(), Fixed_Width, fixed_width, f32, v); }
+f32 gui_pop_fixed_width(void) { gui_stack_pop_impl(gui_get_ctx(), Fixed_Width, fixed_width); }
 
-f32 gui_top_fixed_height(void) { gui_stack_top_impl(gui_get_ui_state(), Fixed_Height, fixed_height); }
-f32 gui_set_next_fixed_height(f32 v) { gui_stack_set_next_impl(gui_get_ui_state(), Fixed_Height, fixed_height, f32, v); }
-f32 gui_push_fixed_height(f32 v) { gui_stack_push_impl(gui_get_ui_state(), Fixed_Height, fixed_height, f32, v); }
-f32 gui_pop_fixed_height(void) { gui_stack_pop_impl(gui_get_ui_state(), Fixed_Height, fixed_height); }
+f32 gui_top_fixed_height(void) { gui_stack_top_impl(gui_get_ctx(), Fixed_Height, fixed_height); }
+f32 gui_set_next_fixed_height(f32 v) { gui_stack_set_next_impl(gui_get_ctx(), Fixed_Height, fixed_height, f32, v); }
+f32 gui_push_fixed_height(f32 v) { gui_stack_push_impl(gui_get_ctx(), Fixed_Height, fixed_height, f32, v); }
+f32 gui_pop_fixed_height(void) { gui_stack_pop_impl(gui_get_ctx(), Fixed_Height, fixed_height); }
 
-Gui_Size gui_top_pref_width(void) { gui_stack_top_impl(gui_get_ui_state(), Pref_Width, pref_width); }
-Gui_Size gui_set_next_pref_width(Gui_Size v) { gui_stack_set_next_impl(gui_get_ui_state(), Pref_Width, pref_width, Gui_Size, v); }
-Gui_Size gui_push_pref_width(Gui_Size v) { gui_stack_push_impl(gui_get_ui_state(), Pref_Width, pref_width, Gui_Size, v); }
-Gui_Size gui_pop_pref_width(void) { gui_stack_pop_impl(gui_get_ui_state(), Pref_Width, pref_width); }
+Gui_Size gui_top_pref_width(void) { gui_stack_top_impl(gui_get_ctx(), Pref_Width, pref_width); }
+Gui_Size gui_set_next_pref_width(Gui_Size v) { gui_stack_set_next_impl(gui_get_ctx(), Pref_Width, pref_width, Gui_Size, v); }
+Gui_Size gui_push_pref_width(Gui_Size v) { gui_stack_push_impl(gui_get_ctx(), Pref_Width, pref_width, Gui_Size, v); }
+Gui_Size gui_pop_pref_width(void) { gui_stack_pop_impl(gui_get_ctx(), Pref_Width, pref_width); }
 
-Gui_Size gui_top_pref_height(void) { gui_stack_top_impl(gui_get_ui_state(), Pref_Height, pref_height); }
-Gui_Size gui_set_next_pref_height(Gui_Size v) { gui_stack_set_next_impl(gui_get_ui_state(), Pref_Height, pref_height, Gui_Size, v); }
-Gui_Size gui_push_pref_height(Gui_Size v) { gui_stack_push_impl(gui_get_ui_state(), Pref_Height, pref_height, Gui_Size, v); }
-Gui_Size gui_pop_pref_height(void) { gui_stack_pop_impl(gui_get_ui_state(), Pref_Height, pref_height); }
+Gui_Size gui_top_pref_height(void) { gui_stack_top_impl(gui_get_ctx(), Pref_Height, pref_height); }
+Gui_Size gui_set_next_pref_height(Gui_Size v) { gui_stack_set_next_impl(gui_get_ctx(), Pref_Height, pref_height, Gui_Size, v); }
+Gui_Size gui_push_pref_height(Gui_Size v) { gui_stack_push_impl(gui_get_ctx(), Pref_Height, pref_height, Gui_Size, v); }
+Gui_Size gui_pop_pref_height(void) { gui_stack_pop_impl(gui_get_ctx(), Pref_Height, pref_height); }
 
-v4 gui_top_bg_color(void) { gui_stack_top_impl(gui_get_ui_state(), Bg_Color, bg_color); }
-v4 gui_set_next_bg_color(v4 v) { gui_stack_set_next_impl(gui_get_ui_state(), Bg_Color, bg_color, v4, v); }
-v4 gui_push_bg_color(v4 v) { gui_stack_push_impl(gui_get_ui_state(), Bg_Color, bg_color, v4, v); }
-v4 gui_pop_bg_color(void) { gui_stack_pop_impl(gui_get_ui_state(), Bg_Color, bg_color); }
+v4 gui_top_bg_color(void) { gui_stack_top_impl(gui_get_ctx(), Bg_Color, bg_color); }
+v4 gui_set_next_bg_color(v4 v) { gui_stack_set_next_impl(gui_get_ctx(), Bg_Color, bg_color, v4, v); }
+v4 gui_push_bg_color(v4 v) { gui_stack_push_impl(gui_get_ctx(), Bg_Color, bg_color, v4, v); }
+v4 gui_pop_bg_color(void) { gui_stack_pop_impl(gui_get_ctx(), Bg_Color, bg_color); }
 
-v4 gui_top_text_color(void) { gui_stack_top_impl(gui_get_ui_state(), Text_Color, text_color); }
-v4 gui_set_next_text_color(v4 v) { gui_stack_set_next_impl(gui_get_ui_state(), Text_Color, text_color, v4, v); }
-v4 gui_push_text_color(v4 v) { gui_stack_push_impl(gui_get_ui_state(), Text_Color, text_color, v4, v); }
-v4 gui_pop_text_color(void) { gui_stack_pop_impl(gui_get_ui_state(), Text_Color, text_color); }
+v4 gui_top_text_color(void) { gui_stack_top_impl(gui_get_ctx(), Text_Color, text_color); }
+v4 gui_set_next_text_color(v4 v) { gui_stack_set_next_impl(gui_get_ctx(), Text_Color, text_color, v4, v); }
+v4 gui_push_text_color(v4 v) { gui_stack_push_impl(gui_get_ctx(), Text_Color, text_color, v4, v); }
+v4 gui_pop_text_color(void) { gui_stack_pop_impl(gui_get_ctx(), Text_Color, text_color); }
 
-Gui_Axis gui_top_child_layout_axis(void) { gui_stack_top_impl(gui_get_ui_state(), Child_Layout_Axis, child_layout_axis); }
-Gui_Axis gui_set_next_child_layout_axis(Gui_Axis v) { gui_stack_set_next_impl(gui_get_ui_state(), Child_Layout_Axis, child_layout_axis, Gui_Axis, v); }
-Gui_Axis gui_push_child_layout_axis(Gui_Axis v) { gui_stack_push_impl(gui_get_ui_state(), Child_Layout_Axis, child_layout_axis, Gui_Axis, v); }
-Gui_Axis gui_pop_child_layout_axis(void) { gui_stack_pop_impl(gui_get_ui_state(), Child_Layout_Axis, child_layout_axis); }
+Gui_Axis gui_top_child_layout_axis(void) { gui_stack_top_impl(gui_get_ctx(), Child_Layout_Axis, child_layout_axis); }
+Gui_Axis gui_set_next_child_layout_axis(Gui_Axis v) { gui_stack_set_next_impl(gui_get_ctx(), Child_Layout_Axis, child_layout_axis, Gui_Axis, v); }
+Gui_Axis gui_push_child_layout_axis(Gui_Axis v) { gui_stack_push_impl(gui_get_ctx(), Child_Layout_Axis, child_layout_axis, Gui_Axis, v); }
+Gui_Axis gui_pop_child_layout_axis(void) { gui_stack_pop_impl(gui_get_ctx(), Child_Layout_Axis, child_layout_axis); }
 
 Gui_Size gui_push_pref_size(Gui_Axis axis, Gui_Size v) {
   Gui_Size result;
@@ -235,11 +235,11 @@ void gui_set_next_rect(rect r) {
   gui_set_next_fixed_height(r.dim.y);
 }
 
-Gui_Panel_Itr gui_top_panel_itr(void) { gui_stack_top_impl(gui_get_ui_state(), Panel_Itr, panel_itr); }
-Gui_Panel_Itr gui_set_next_panel_itr(Gui_Panel_Itr itr) { gui_stack_set_next_impl(gui_get_ui_state(), Panel_Itr, panel_itr, Gui_Panel_Itr, itr); }
-Gui_Panel_Itr gui_push_panel_itr(Gui_Panel_Itr itr) { gui_stack_push_impl(gui_get_ui_state(), Panel_Itr, panel_itr, Gui_Panel_Itr, itr); }
-Gui_Panel_Itr gui_pop_panel_itr(void) { gui_stack_pop_impl(gui_get_ui_state(), Panel_Itr, panel_itr); }
-bool gui_empty_panel_itr(void) { gui_stack_empty_impl(gui_get_ui_state(), Panel_Itr, panel_itr); }
+Gui_Panel_Itr gui_top_panel_itr(void) { gui_stack_top_impl(gui_get_ctx(), Panel_Itr, panel_itr); }
+Gui_Panel_Itr gui_set_next_panel_itr(Gui_Panel_Itr itr) { gui_stack_set_next_impl(gui_get_ctx(), Panel_Itr, panel_itr, Gui_Panel_Itr, itr); }
+Gui_Panel_Itr gui_push_panel_itr(Gui_Panel_Itr itr) { gui_stack_push_impl(gui_get_ctx(), Panel_Itr, panel_itr, Gui_Panel_Itr, itr); }
+Gui_Panel_Itr gui_pop_panel_itr(void) { gui_stack_pop_impl(gui_get_ctx(), Panel_Itr, panel_itr); }
+bool gui_empty_panel_itr(void) { gui_stack_empty_impl(gui_get_ctx(), Panel_Itr, panel_itr); }
 
 
 
