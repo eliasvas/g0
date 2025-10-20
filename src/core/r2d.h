@@ -11,15 +11,6 @@
 #define REND_MAX_TEXTURES 4
 
 typedef struct {
-  f32 r,g,b,a;
-} R2D_Color;
-
-typedef struct {
-  f32 x,y,w,h;
-} R2D_Rect;
-
-
-typedef struct {
   v4 src_rect;
   v4 dst_rect;
   v4 color;
@@ -28,8 +19,8 @@ typedef struct {
 } Batch_Vertex;
 
 typedef struct {
-  R2D_Rect src_rect, dst_rect;
-  R2D_Color color;
+  rect src_rect, dst_rect;
+  color c;
   f32 rot_deg;
 
   // TODO: Maybe this isn't the best way to conduct business.. Ogl_Tex is just a view
@@ -82,7 +73,7 @@ typedef struct {
   float rot_deg;
 } R2D_Cam;
 
-R2D* r2d_begin(Arena *arena, R2D_Cam *cam, v2 screen_dim);
+R2D* r2d_begin(Arena *arena, R2D_Cam *cam, rect viewport);
 void r2d_end(R2D *rend);
 void r2d_push_quad(R2D *rend, R2D_Quad q);
 

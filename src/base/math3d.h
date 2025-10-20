@@ -242,13 +242,16 @@ INLINE m4 mat4_rotate(f32 angle, v3 axis) {
     return res;
 }
 
-// TODO: Expand the rect struct, add functions for intersection and stuff
 typedef union rect
 {
     struct { f32 x,y,w,h; };
     struct { v2 p0,dim; };
     f32 raw[4];
 }rect;
+
+static rect rec(f32 x, f32 y, f32 w, f32 h) {
+  return (rect){{x,y,w,h}};
+}
 
 static bool rect_isect_point(rect r, v2 p) {
   return ((p.x >= r.x) && (p.x <= r.x+r.w)) && ((p.y >= r.y) && (p.y <= r.y+r.h));

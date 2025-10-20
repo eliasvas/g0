@@ -131,14 +131,14 @@ f32 font_util_measure_text_height(Font_Info *font_info, char *text, f32 scale) {
   return font_util_calc_text_rect(font_info, text, v2m(0,0), scale).h;
 }
 
-void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, v2 screen_dim, char *text, v2 baseline_pos, f32 scale, bool draw_box) {
-  R2D* text_rend = r2d_begin(arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, screen_dim);
+void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport, char *text, v2 baseline_pos, f32 scale, bool draw_box) {
+  R2D* text_rend = r2d_begin(arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, viewport);
 
   rect tr = font_util_calc_text_rect(font_info, text, baseline_pos, scale);
   if (draw_box) {
     r2d_push_quad(text_rend, (R2D_Quad) {
-        .dst_rect = *(R2D_Rect*)&tr,
-        .color = (R2D_Color){0.9,0.4,0.4,1},
+        .dst_rect = tr,
+        .c = col(0.9,0.4,0.4,1),
     });
   }
 
@@ -146,9 +146,9 @@ void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, v2 screen_dim
     u8 c = text[i];
     Glyph_Info metrics = font_info->glyphs[c - font_info->first_codepoint];
     r2d_push_quad(text_rend, (R2D_Quad) {
-        .dst_rect = (R2D_Rect){baseline_pos.x+metrics.off.x*scale, baseline_pos.y+metrics.off.y*scale, metrics.r.w*scale, metrics.r.h*scale},
-        .src_rect = (R2D_Rect){metrics.r.x, metrics.r.y, metrics.r.w, metrics.r.h},
-        .color = (R2D_Color){0.9,0.9,0.3,1},
+        .dst_rect = rec(baseline_pos.x+metrics.off.x*scale, baseline_pos.y+metrics.off.y*scale, metrics.r.w*scale, metrics.r.h*scale),
+        .src_rect = rec(metrics.r.x, metrics.r.y, metrics.r.w, metrics.r.h),
+        .c = col(0.9,0.9,0.3,1),
         .tex = font_info->atlas,
     });
     baseline_pos.x += metrics.xadvance*scale;

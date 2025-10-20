@@ -97,8 +97,8 @@ Effect effect_make(Effect_Kind kind) {
   return e;
 }
 
-void effect_render(Effect *effect, Effect_Data *data) {
-  effect->bundle.dyn_state.viewport = (Ogl_Rect){0,0,data->screen_dim.x,data->screen_dim.y};
+void effect_render(Effect *effect, Effect_Data *data, rect viewport) {
+  effect->bundle.dyn_state.viewport = viewport;
 
   switch (effect->kind) {
     case EFFECT_KIND_BLUR_SOURCE:

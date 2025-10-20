@@ -15,9 +15,6 @@ extern "C" {
 
 #include <stdio.h>
 
-typedef struct { float x,y,w,h; } Ogl_Rect;
-typedef struct { float r,g,b,a; } Ogl_Color;
-
 typedef enum {
   OGL_PRIM_TYPE_POINT,
   OGL_PRIM_TYPE_LINE,
@@ -129,8 +126,8 @@ typedef enum {
 } Ogl_Dyn_State_Flags;
 
 typedef struct {
-  Ogl_Rect viewport;
-  Ogl_Rect scissor;
+  rect viewport;
+  rect scissor;
   uint64_t flags;
 }Ogl_Dyn_State;
 
@@ -180,7 +177,7 @@ typedef struct {
 #ifndef OGL_IMPLEMENTATION
 
   extern void ogl_init();
-  extern void ogl_clear(Ogl_Color color);
+  extern void ogl_clear(color c);
 
   extern bool ogl_buf_update(Ogl_Buf *buf, uint64_t offset, void *data, uint32_t count, uint32_t bytes_per_elem);
   extern bool ogl_buf_init(Ogl_Buf *buf, Ogl_Buf_Kind kind, Ogl_Buf_Hint hint, void *data, uint32_t count, uint32_t bytes_per_elem);
@@ -210,8 +207,8 @@ void ogl_init() {
   glBindVertexArray(vao);
 }
 
-void ogl_clear(Ogl_Color color) {
-  glClearColor(color.r, color.g, color.b, color.a);
+void ogl_clear(color c) {
+  glClearColor(c.r, c.g, c.b, c.a);
   glClear(GL_COLOR_BUFFER_BIT);
 }
  
@@ -613,12 +610,12 @@ static void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
   }
 
   // Set the dynamic state
-  Ogl_Rect viewport = bundle->dyn_state.viewport;
+  rect viewport = bundle->dyn_state.viewport;
   glViewport(viewport.x, viewport.y, viewport.w, viewport.h);
   if (bundle->dyn_state.flags & OGL_DYN_STATE_FLAG_SCISSOR) {
     glEnable(GL_SCISSOR_TEST);
-    Ogl_Rect scissor = bundle->dyn_state.scissor;
-    glViewport(scissor.x, scissor.y, scissor.w, scissor.h);
+    rect scissor = bundle->dyn_state.scissor;
+    glScissor(scissor.x, scissor.y, scissor.w, scissor.h);
   } else {
     glDisable(GL_SCISSOR_TEST);
   }
@@ -702,7 +699,7 @@ void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint3
   .
   .
 
-  rbundle.dyn_state.viewport = (Ogl_Rect){0,0,gs->screen_dim.x,gs->screen_dim.y};
+  rbundle.dyn_state.viewport = (rect){0,0,gs->screen_dim.x,gs->screen_dim.y};
   ogl_render_bundle_draw(&rbundle, OGL_PRIM_TYPE_TRIANGLE_FAN, 4, 1);
 */
 

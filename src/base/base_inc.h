@@ -6,5 +6,6 @@
 #include "math3d.h"
 #include "profiler.h"
 #include "hash.h"
+#include "color.h"
 
 #endif

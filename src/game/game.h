@@ -9,6 +9,8 @@ typedef struct {
   Arena *frame_arena; // For per-frame allocations
   v2 screen_dim;
 
+  rect game_viewport;
+
   Ogl_Tex atlas;
   Ogl_Tex red;
 

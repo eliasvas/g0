@@ -29,6 +29,6 @@ rect font_util_calc_text_rect(Font_Info *font_info, char *text, v2 baseline_pos,
 f32 font_util_measure_text_width(Font_Info *font_info, char *text, f32 scale);
 f32 font_util_measure_text_height(Font_Info *font_info, char *text, f32 scale);
 
-void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, v2 screen_dim, char *text, v2 baseline_pos, f32 scale, bool draw_box);
+void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport, char *text, v2 baseline_pos, f32 scale, bool draw_box);
 
 #endif

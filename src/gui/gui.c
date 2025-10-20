@@ -28,6 +28,7 @@ void gui_context_init(Arena *temp_arena, Font_Info *font) {
   g_gui_ctx.root_panel->label = "root_panel";
 
   // DUMMY hierarchy for testing
+  // TODO: put this in game.c
   Gui_Panel *c1 = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
   c1->label = "c1";
   c1->parent_pct = 0.4;
@@ -123,7 +124,7 @@ Gui_Box* gui_box_lookup_from_key(Gui_Box_Flags flags, Gui_Key key) {
 }
 
 Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
-  Gui_Context *state = gui_get_ctx();
+  Gui_Context *gctx = gui_get_ctx();
   Gui_Box *parent = gui_top_parent();
 
   // Look up to slot based cache to find the box
@@ -181,26 +182,26 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 		box->child_layout_axis = gui_top_child_layout_axis();
 		// We are doing all layouting here, we should probably just traverse the hierarchy like Ryan says
 
-		if (state->fixed_x_stack.top != &state->fixed_x_nil_stack_top) {
-			box->fixed_pos.raw[GUI_AXIS_X] = state->fixed_x_stack.top->v;
+		if (gctx->fixed_x_stack.top != &gctx->fixed_x_nil_stack_top) {
+			box->fixed_pos.raw[GUI_AXIS_X] = gctx->fixed_x_stack.top->v;
 			box->flags |= GB_FLAG_FIXED_X;
 		}
 
-		if (state->fixed_y_stack.top != &state->fixed_y_nil_stack_top) {
-			box->fixed_pos.raw[GUI_AXIS_Y] = state->fixed_y_stack.top->v;
+		if (gctx->fixed_y_stack.top != &gctx->fixed_y_nil_stack_top) {
+			box->fixed_pos.raw[GUI_AXIS_Y] = gctx->fixed_y_stack.top->v;
 			box->flags |= GB_FLAG_FIXED_Y;
 		}
 
 		// FIXED_WIDTH/HEIGHT have NO pref size (GUI_SIZE_KIND_NULL) so their fixed_size will stay the same
-		if (state->fixed_width_stack.top != &state->fixed_width_nil_stack_top) {
-			box->fixed_size.raw[GUI_AXIS_X] = state->fixed_width_stack.top->v;
+		if (gctx->fixed_width_stack.top != &gctx->fixed_width_nil_stack_top) {
+			box->fixed_size.raw[GUI_AXIS_X] = gctx->fixed_width_stack.top->v;
 			box->flags |= GB_FLAG_FIXED_WIDTH;
 		}else {
 			box->pref_size[GUI_AXIS_X] = gui_top_pref_width();
 		}
 
-		if (state->fixed_height_stack.top != &state->fixed_height_nil_stack_top) {
-			box->fixed_size.raw[GUI_AXIS_Y] = state->fixed_height_stack.top->v;
+		if (gctx->fixed_height_stack.top != &gctx->fixed_height_nil_stack_top) {
+			box->fixed_size.raw[GUI_AXIS_Y] = gctx->fixed_height_stack.top->v;
 			box->flags |= GB_FLAG_FIXED_HEIGHT;
 		}else {
 			box->pref_size[GUI_AXIS_Y] = gui_top_pref_height();
@@ -612,25 +613,25 @@ void gui_layout_root(Gui_Box *root, Gui_Axis axis)  {
 ///////////////////////////////////
 
 void gui_draw_rect(rect r, v4 c) {
-  Gui_Context *state = gui_get_ctx();
-  R2D* text_rend = r2d_begin(state->temp_arena, &(R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, state->screen_dim);
+  Gui_Context *gctx = gui_get_ctx();
+  R2D* text_rend = r2d_begin(gctx->temp_arena, &(R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, rec(0,0,gctx->screen_dim.x,gctx->screen_dim.y));
   r2d_push_quad(text_rend, (R2D_Quad) {
-      .dst_rect = *(R2D_Rect*)&r,
-      .color = *(R2D_Color*)&c,
+      .dst_rect = r,
+      .c = c,
   });
   r2d_end(text_rend);
 }
 
 void gui_draw_text(rect r, v4 c, char *s) {
-  Gui_Context *state = gui_get_ctx();
+  Gui_Context *gctx = gui_get_ctx();
 
-  rect label_rect = font_util_calc_text_rect(g_gui_ctx.font, s, v2m(0,0), state->font_scale);
+  rect label_rect = font_util_calc_text_rect(g_gui_ctx.font, s, v2m(0,0), gctx->font_scale);
   rect fitted_rect = rect_try_fit_inside(label_rect, r);
 
   v2 top_left = v2m(fitted_rect.x, fitted_rect.y);
   v2 baseline = v2_sub(top_left, label_rect.p0);
 
-  font_util_debug_draw_text(state->font, state->temp_arena, state->screen_dim, s, baseline, state->font_scale, false);
+  font_util_debug_draw_text(gctx->font, gctx->temp_arena, rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y), s, baseline, gctx->font_scale, false);
 }
 
 

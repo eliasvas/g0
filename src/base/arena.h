@@ -1,7 +1,7 @@
 #ifndef _ARENA_H__
 #define _ARENA_H__
 #include "helper.h"
-// TODO: Poison non-committed memory with Asan, if we got it, we should stub it I think, casey style
+#include <stdarg.h>
 
 #define ARENA_DEFAULT_CHUNK_SIZE KB(4)
 

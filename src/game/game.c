@@ -49,142 +49,15 @@ void game_init(Game_State *gs) {
 }
 
 void game_update(Game_State *gs, float dt) {
-
+  Gui_Box *right = gui_box_lookup_from_key(0, gui_key_from_str("panel_c2"));
+  if (!gui_box_is_nil(right)) {
+    gs->game_viewport = right->r; 
+  }
 }
 
 void game_render(Game_State *gs, float dt) {
-  ogl_clear((Ogl_Color){0.2,0.2,0.25,1.0});
-
-#define ATLAS_SPRITES_X 16
-#define ATLAS_SPRITES_Y 10
-  R2D* fs_rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, gs->screen_dim);
-  r2d_push_quad(fs_rend, (R2D_Quad) {
-      .src_rect = (R2D_Rect){0,0,128,80},
-      .dst_rect = (R2D_Rect){0,0,gs->screen_dim.x,gs->screen_dim.y},
-      .color = (R2D_Color){1,1,1,1},
-      .tex = gs->atlas,
-  });
-  r2d_end(fs_rend);
-
-  // Effect Testing too :)
-  Effect_Data vortex_data = {
-    .screen_dim = gs->screen_dim,
-    .time_sec = platform_get_time(),
-    .framerate = 1.0f/dt,
-    .param0 = v4m(0.8,0,0,0), // param0.x is alpha currently
-  };
-  effect_render(&gs->vortex_effect, &vortex_data);
-
-  char text_to_draw[64];
-  f32 fps = 1.0/dt;
-  f32 font_scale = 0.5;
-  sprintf(text_to_draw, "fps: %.2f", fps);
-  f32 w = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
-  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x - w,32), font_scale, true);
-
-  sprintf(text_to_draw, "A: pressed:%d-down:%d-released:%d-up:%d", input_key_pressed(KEY_SCANCODE_A), input_key_down(KEY_SCANCODE_A), input_key_released(KEY_SCANCODE_A), input_key_up(KEY_SCANCODE_A));
-  f32 wks = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
-  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x/2 - wks/2,64), 0.5, true);
-
-  //sprintf(text_to_draw, "MMB: pressed:%d-down:%d-released:%d-up:%d", input_mkey_pressed(INPUT_MOUSE_MMB), input_mkey_down(INPUT_MOUSE_MMB), input_mkey_released(INPUT_MOUSE_MMB), input_mkey_up(INPUT_MOUSE_MMB));
-  sprintf(text_to_draw, "mousepos: %f %f", input_get_mouse_pos().x, input_get_mouse_pos().y);
-  f32 wks2 = font_util_measure_text_width(&gs->font, text_to_draw, font_scale);
-  font_util_debug_draw_text(&gs->font, gs->frame_arena, gs->screen_dim, text_to_draw, v2m(gs->screen_dim.x/2 - wks2/2,128), 0.5, true);
-
-  float speedup = 3.0;
-  f64 ts = platform_get_time()*speedup;
-  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->screen_dim.x/2.0, gs->screen_dim.y/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,}, gs->screen_dim);
-
-  r2d_push_quad(rend, (R2D_Quad) {
-      .src_rect = (R2D_Rect){},
-      .dst_rect = (R2D_Rect){0,0,10,10},
-      .color = (R2D_Color){1,1,1,0.8},
-      .tex = gs->red,
-      .rot_deg = ts,
-  });
-  u32 xidx = (u32)ts % ATLAS_SPRITES_X;
-  u32 yidx = (u32)ts / ATLAS_SPRITES_X;
-  r2d_push_quad(rend, (R2D_Quad) {
-      .src_rect = (R2D_Rect){xidx*8, yidx*8, 8,8},
-      .dst_rect = (R2D_Rect){1,1,8,8},
-      .color = (R2D_Color){1,1,1,1.0},
-      .tex = gs->atlas,
-      .rot_deg = ts,
-  });
-  r2d_end(rend);
-
-  // Effect Testing
-  Effect_Data fill_data = {
-    .screen_dim = gs->screen_dim,
-    .time_sec = platform_get_time(),
-    .framerate = 1.0f/dt,
-    .param0 = v4m(0.1,0.1,0.9,0.1),
-    .param1 = v4m(1,1,1,1),
-  };
-  effect_render(&gs->fill_effect, &fill_data);
-
+  ogl_clear(col(0.2,0.2,0.25,1.0));
   gui_frame_begin(gs->screen_dim, dt);
-
-
-  Gui_Box *right = gui_box_lookup_from_key(0, gui_key_from_str("panel_c2"));
-  assert(!gui_box_is_nil(right));
-  gui_push_parent(right);
-
-  static v4 dummy_color_palette[4][6] = {
-    {
-      (v4){{0.65f, 0.28f, 0.24f, 1.0f}},
-      (v4){{0.68f, 0.36f, 0.30f, 1.0f}},
-      (v4){{0.75f, 0.58f, 0.25f, 1.0f}},
-      (v4){{0.15f, 0.46f, 0.44f, 1.0f}},
-      (v4){{0.28f, 0.34f, 0.55f, 1.0f}},
-      (v4){{0.50f, 0.28f, 0.58f, 1.0f}},
-    },
-    {
-      (v4){{0.60f, 0.38f, 0.20f, 1.0f}},
-      (v4){{0.36f, 0.58f, 0.28f, 1.0f}},
-      (v4){{0.28f, 0.54f, 0.32f, 1.0f}},
-      (v4){{0.22f, 0.46f, 0.70f, 1.0f}},
-      (v4){{0.30f, 0.38f, 0.40f, 1.0f}},
-      (v4){{0.44f, 0.32f, 0.56f, 1.0f}},
-    },
-    {
-      (v4){{0.55f, 0.25f, 0.22f, 1.0f}},
-      (v4){{0.68f, 0.38f, 0.25f, 1.0f}},
-      (v4){{0.72f, 0.65f, 0.25f, 1.0f}},
-      (v4){{0.12f, 0.36f, 0.36f, 1.0f}},
-      (v4){{0.20f, 0.28f, 0.50f, 1.0f}},
-      (v4){{0.36f, 0.24f, 0.48f, 1.0f}},
-    },
-    {
-      (v4){{0.55f, 0.55f, 0.55f, 1.0f}},
-      (v4){{0.48f, 0.52f, 0.54f, 1.0f}},
-      (v4){{0.52f, 0.60f, 0.53f, 1.0f}},
-      (v4){{0.56f, 0.52f, 0.44f, 1.0f}},
-      (v4){{0.54f, 0.50f, 0.62f, 1.0f}},
-      (v4){{0.65f, 0.65f, 0.65f, 1.0f}},
-    }
-  };
-  for (u32 i = 0; i < 3; i+=1) {
-    char pane_name[64];
-    sprintf(pane_name, "mpane%i", i);
-    gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-    gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-    gui_set_next_child_layout_axis(GUI_AXIS_X);
-    Gui_Box *panebox= gui_pane(pane_name).box;
-    panebox->flags = GB_FLAG_OVERFLOW_X;
-    gui_push_parent(panebox);
-
-    for (u32 j = 0; j < 6; j+=1) {
-      gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 100, 0.0});
-      gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-      gui_set_next_bg_color(v4_multf(dummy_color_palette[i][j], 1.0));
-      char name[64];
-      sprintf(name, "b%i%i", i, j);
-      gui_button(name);
-    }
-    gui_pop_parent();
-  }
-  gui_pop_parent();
 
   Gui_Box *leftup = gui_box_lookup_from_key(0, gui_key_from_str("panel_c1u"));
   assert(!gui_box_is_nil(leftup));
@@ -227,9 +100,61 @@ void game_render(Game_State *gs, float dt) {
   }
   gui_pop_parent();
 
-
-
   gui_frame_end();
 
+
+#define ATLAS_SPRITES_X 16
+#define ATLAS_SPRITES_Y 10
+  R2D* fs_rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, gs->game_viewport);
+  r2d_push_quad(fs_rend, (R2D_Quad) {
+      .src_rect = rec(0,0,128,80),
+      .dst_rect = rec(0,0,gs->game_viewport.w,gs->game_viewport.h),
+      .c = col(1,1,1,1),
+      .tex = gs->atlas,
+  });
+  r2d_end(fs_rend);
+
+  // Effect Testing too :)
+  Effect_Data vortex_data = {
+    .screen_dim = v2m(gs->game_viewport.w, gs->game_viewport.h),
+    .time_sec = platform_get_time(),
+    .framerate = 1.0f/dt,
+    .param0 = v4m(0.8,0,0,0), // param0.x is alpha currently
+  };
+  effect_render(&gs->vortex_effect, &vortex_data, gs->game_viewport);
+
+  float speedup = 3.0;
+  f64 ts = platform_get_time()*speedup;
+  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->game_viewport.w/2.0, gs->game_viewport.h/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,}, gs->game_viewport);
+
+  r2d_push_quad(rend, (R2D_Quad) {
+      .src_rect = rec(0,0,0,0),
+      .dst_rect = rec(0,0,10,10),
+      .c = col(1,1,1,0.8),
+      .tex = gs->red,
+      .rot_deg = ts,
+  });
+  u32 xidx = (u32)ts % ATLAS_SPRITES_X;
+  u32 yidx = (u32)ts / ATLAS_SPRITES_X;
+  r2d_push_quad(rend, (R2D_Quad) {
+      .src_rect = rec(xidx*8, yidx*8, 8, 8),
+      .dst_rect = rec(1,1,8,8),
+      .c = col(1,1,1,1),
+      .tex = gs->atlas,
+      .rot_deg = ts,
+  });
+  r2d_end(rend);
+
+  /*
+  // Effect Testing
+  Effect_Data fill_data = {
+    .viewport = gs->game_viewport,
+    .time_sec = platform_get_time(),
+    .framerate = 1.0f/dt,
+    .param0 = v4m(0.1,0.1,0.9,0.1),
+    .param1 = v4m(1,1,1,1),
+  };
+  effect_render(&gs->fill_effect, &fill_data);
+  */
 }
 

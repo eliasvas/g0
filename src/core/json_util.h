@@ -67,7 +67,6 @@ static Json_Tokens json_tokenize(Arena *arena, char *json_str) {
 
     int count = 0;
     for (u32 i = 0; i < str_len(json_str); i+=count) {
-
         Json_Token token = {};
         char *c = &json_str[i];
         count = 1;
