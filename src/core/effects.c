@@ -5,8 +5,10 @@ precision highp float;
 out vec2 f_tc;
 layout (std140) uniform EffectUBO {
   vec2 screen_dim;
+  vec2 screen_offset;
   float time_sec;
   float framerate;
+  vec2 pad0;
   vec4 param0;
   vec4 param1;
 };
@@ -22,8 +24,10 @@ layout(location = 0) out vec4 out_color;
 in vec2 f_tc;
 layout (std140) uniform EffectUBO {
   vec2 screen_dim;
+  vec2 screen_offset;
   float time_sec;
   float framerate;
+  vec2 pad0;
   vec4 param0;
   vec4 param1;
 };
@@ -31,7 +35,7 @@ layout (std140) uniform EffectUBO {
 //uniform sampler2D tex;
 void main() {
   float transparency = param0.x;
-  vec2 uv = gl_FragCoord.xy / screen_dim / 0.5 - 1.0;
+  vec2 uv = (gl_FragCoord.xy - screen_offset) / screen_dim / 0.5 - 1.0;
   uv.x *= screen_dim.x / screen_dim.y;
   float f = 1.0 / length(uv);
   f += atan(uv.x, uv.y) / acos(0.);
@@ -49,8 +53,10 @@ layout(location = 0) out vec4 out_color;
 in vec2 f_tc;
 layout (std140) uniform EffectUBO {
   vec2 screen_dim;
+  vec2 screen_offset;
   float time_sec;
   float framerate;
+  vec2 pad0;
   vec4 param0;
   vec4 param1;
 };
@@ -97,8 +103,12 @@ Effect effect_make(Effect_Kind kind) {
   return e;
 }
 
-void effect_render(Effect *effect, Effect_Data *data, rect viewport) {
-  effect->bundle.dyn_state.viewport = viewport;
+void effect_render(Effect *effect, Effect_Data *data, v2 screen_dim, rect viewport) {
+  // make viewport OpenGL style, because our effects are shadertoy based
+  rect v = rec(viewport.x, screen_dim.y - viewport.y - viewport.h, viewport.w, viewport.h);
+  effect->bundle.dyn_state.viewport = v;
+  data->screen_dim = v2m(v.w, v.h);
+  data->screen_offset = v2m(v.x, v.y);
 
   switch (effect->kind) {
     case EFFECT_KIND_BLUR_SOURCE:

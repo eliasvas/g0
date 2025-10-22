@@ -26,42 +26,6 @@ void gui_context_init(Arena *temp_arena, Font_Info *font) {
   g_gui_ctx.root_panel->parent_pct = 1.0;
   g_gui_ctx.root_panel->split_axis = GUI_AXIS_X;
   g_gui_ctx.root_panel->label = "root_panel";
-
-  // DUMMY hierarchy for testing
-  // TODO: put this in game.c
-  Gui_Panel *c1 = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
-  c1->label = "c1";
-  c1->parent_pct = 0.4;
-  c1->split_axis = GUI_AXIS_Y;
-  dll_push_back(g_gui_ctx.root_panel->first, g_gui_ctx.root_panel->last, c1);
-  c1->parent = g_gui_ctx.root_panel;
-  assert(c1->parent == g_gui_ctx.root_panel);
-
-  Gui_Panel *c1u = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
-  c1u->label = "c1u";
-  c1u->parent_pct = 0.2;
-  c1u->split_axis = GUI_AXIS_Y;
-  dll_push_back(c1->first, c1->last, c1u);
-  c1u->parent = c1;
-
-  Gui_Panel *c1d = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
-  c1d->label = "c1d";
-  c1d->parent_pct = 0.8;
-  c1d->split_axis = GUI_AXIS_Y;
-  dll_push_back(c1->first, c1->last, c1d);
-  c1d->parent = c1;
-
-  Gui_Panel *c2 = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
-  c2->label = "c2";
-  c2->parent_pct = 0.6;
-  c2->split_axis = GUI_AXIS_X;
-  dll_push_back(g_gui_ctx.root_panel->first, g_gui_ctx.root_panel->last, c2);
-  c2->parent = g_gui_ctx.root_panel;
-  assert(c1->next == c2);
-  assert(c1->parent == g_gui_ctx.root_panel);
-  assert(c2->parent == g_gui_ctx.root_panel);
-  // ---------------------------------
-
 }
 
 Gui_Context* gui_get_ctx() {

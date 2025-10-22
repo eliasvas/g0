@@ -19,13 +19,15 @@ typedef struct {
 // https://wikis.khronos.org/opengl/Interface_Block_(GLSL) - std140 layout
 typedef struct {
   v2 screen_dim;
+  v2 screen_offset;
   f32 time_sec;
   f32 framerate;
+  v2 pad0;
   v4 param0;
   v4 param1;
 } Effect_Data;
 
 Effect effect_make(Effect_Kind kind);
-void effect_render(Effect *effect, Effect_Data *data, rect viewport);
+void effect_render(Effect *effect, Effect_Data *data, v2 screen_dim, rect viewport);
 
 #endif

@@ -24,6 +24,43 @@ void game_init(Game_State *gs) {
 
   // Gui Stuff
   gui_context_init(gs->frame_arena, &gs->font);
+  // DUMMY gui panel hierarchy for testing
+  Gui_Panel *c1 = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
+  c1->label = "c1";
+  c1->parent_pct = 0.4;
+  c1->split_axis = GUI_AXIS_Y;
+  dll_push_back(gui_get_ctx()->root_panel->first, gui_get_ctx()->root_panel->last, c1);
+  c1->parent = gui_get_ctx()->root_panel;
+  assert(c1->parent == gui_get_ctx()->root_panel);
+
+  Gui_Panel *c1u = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
+  c1u->label = "c1u";
+  c1u->parent_pct = 0.2;
+  c1u->split_axis = GUI_AXIS_Y;
+  dll_push_back(c1->first, c1->last, c1u);
+  c1u->parent = c1;
+
+  Gui_Panel *c1d = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
+  c1d->label = "c1d";
+  c1d->parent_pct = 0.8;
+  c1d->split_axis = GUI_AXIS_Y;
+  dll_push_back(c1->first, c1->last, c1d);
+  c1d->parent = c1;
+
+  Gui_Panel *c2 = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
+  c2->label = "c2";
+  c2->parent_pct = 0.6;
+  c2->split_axis = GUI_AXIS_X;
+  dll_push_back(gui_get_ctx()->root_panel->first, gui_get_ctx()->root_panel->last, c2);
+  c2->parent = gui_get_ctx()->root_panel;
+  assert(c1->next == c2);
+  assert(c1->parent == gui_get_ctx()->root_panel);
+  assert(c2->parent == gui_get_ctx()->root_panel);
+  // ---------------------------------
+
+
+
+
 
   // Json library testing
   Json_Element *root = json_parse(gs->frame_arena, test_str);
@@ -121,7 +158,7 @@ void game_render(Game_State *gs, float dt) {
     .framerate = 1.0f/dt,
     .param0 = v4m(0.8,0,0,0), // param0.x is alpha currently
   };
-  effect_render(&gs->vortex_effect, &vortex_data, gs->game_viewport);
+  effect_render(&gs->vortex_effect, &vortex_data, gs->screen_dim, gs->game_viewport);
 
   float speedup = 3.0;
   f64 ts = platform_get_time()*speedup;
