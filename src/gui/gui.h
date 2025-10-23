@@ -9,6 +9,10 @@ typedef enum {
   GUI_AXIS_Y,
 } Gui_Axis;
 
+static Gui_Axis gui_axis_flip(Gui_Axis axis) {
+  return (axis == GUI_AXIS_X) ? GUI_AXIS_Y : GUI_AXIS_X;
+}
+
 typedef enum {
   GUI_SIZE_KIND_NULL,
   GUI_SIZE_KIND_PIXELS,
@@ -79,7 +83,7 @@ struct Gui_Box {
 	f32 active_t;
 	u32 child_count;
 	v2 view_off;
-	v2 view_off_target;
+	v2 view_off_target; // for when we do better animations!
 };
 
 typedef struct Gui_Box_Hash_Slot Gui_Box_Hash_Slot;
@@ -286,6 +290,12 @@ Gui_Signal gui_button(char *str);
 Gui_Signal gui_pane(char *str);
 Gui_Signal gui_label(char *str);
 Gui_Signal gui_spacer(Gui_Size size);
+
+typedef struct {
+  f32 percent;
+} Gui_Scroll_Data;
+
+Gui_Signal gui_scroll_list(char *str, Gui_Axis axis, Gui_Scroll_Data* sdata);
 
 
 #endif

@@ -416,7 +416,7 @@ static f64 buf_to_float(buf b) {
   return str_to_float(b.data, b.count);
 }
 
-static f64 buf_to_bool(buf b) {
+static bool buf_to_bool(buf b) {
   return str_to_bool(b.data, b.count);
 }
  

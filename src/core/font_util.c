@@ -131,8 +131,8 @@ f32 font_util_measure_text_height(Font_Info *font_info, char *text, f32 scale) {
   return font_util_calc_text_rect(font_info, text, v2m(0,0), scale).h;
 }
 
-void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport, char *text, v2 baseline_pos, f32 scale, bool draw_box) {
-  R2D* text_rend = r2d_begin(arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, viewport);
+void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport, rect clip_rect, char *text, v2 baseline_pos, f32 scale, bool draw_box) {
+  R2D* text_rend = r2d_begin(arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, viewport, clip_rect);
 
   rect tr = font_util_calc_text_rect(font_info, text, baseline_pos, scale);
   if (draw_box) {

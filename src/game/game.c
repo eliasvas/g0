@@ -93,7 +93,7 @@ void game_update(Game_State *gs, float dt) {
 }
 
 void game_render(Game_State *gs, float dt) {
-  ogl_clear(col(0.2,0.2,0.25,1.0));
+  ogl_clear(col(0.0,0.0,0.0,1.0));
   gui_frame_begin(gs->screen_dim, dt);
 
   Gui_Box *leftup = gui_box_lookup_from_key(0, gui_key_from_str("panel_c1u"));
@@ -125,12 +125,18 @@ void game_render(Game_State *gs, float dt) {
   gui_pop_parent();
 
   Gui_Box *leftdown = gui_box_lookup_from_key(0, gui_key_from_str("panel_c1d"));
+  //leftdown->view_off.y = 20;
   assert(!gui_box_is_nil(leftdown));
-  gui_push_parent(leftdown);
+  gui_set_next_parent(leftdown);
+
+  static Gui_Scroll_Data sdata = {};
+  Gui_Signal scroll_list = gui_scroll_list("scroll_list", GUI_AXIS_Y, &sdata);
+
+  gui_push_parent(scroll_list.box);
   for (u32 i = 0; i < 10; i+=1) {
     gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
     gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-    gui_set_next_bg_color(v4m(i * 0.1, 0.2, 0.4, 1));
+    gui_set_next_bg_color(col(i * 0.1, 0.2, 0.4, 0.5));
     char name[64];
     sprintf(name, "button_%i", i);
     gui_button(name);
@@ -142,7 +148,7 @@ void game_render(Game_State *gs, float dt) {
 
 #define ATLAS_SPRITES_X 16
 #define ATLAS_SPRITES_Y 10
-  R2D* fs_rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, gs->game_viewport);
+  R2D* fs_rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, gs->game_viewport, gs->game_viewport);
   r2d_push_quad(fs_rend, (R2D_Quad) {
       .src_rect = rec(0,0,128,80),
       .dst_rect = rec(0,0,gs->game_viewport.w,gs->game_viewport.h),
@@ -162,7 +168,7 @@ void game_render(Game_State *gs, float dt) {
 
   float speedup = 3.0;
   f64 ts = platform_get_time()*speedup;
-  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->game_viewport.w/2.0, gs->game_viewport.h/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,}, gs->game_viewport);
+  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->game_viewport.w/2.0, gs->game_viewport.h/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,}, gs->game_viewport, gs->game_viewport);
 
   r2d_push_quad(rend, (R2D_Quad) {
       .src_rect = rec(0,0,0,0),

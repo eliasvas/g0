@@ -208,6 +208,7 @@ void ogl_init() {
 }
 
 void ogl_clear(color c) {
+  glDisable(GL_SCISSOR_TEST);
   glClearColor(c.r, c.g, c.b, c.a);
   glClear(GL_COLOR_BUFFER_BIT);
 }
@@ -615,7 +616,8 @@ static void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
   if (bundle->dyn_state.flags & OGL_DYN_STATE_FLAG_SCISSOR) {
     glEnable(GL_SCISSOR_TEST);
     rect scissor = bundle->dyn_state.scissor;
-    glScissor(scissor.x, scissor.y, scissor.w, scissor.h);
+    glScissor(scissor.x, viewport.h - scissor.y - scissor.h, scissor.w, scissor.h);
+    //glScissor(viewport.x, viewport.y, viewport.w, viewport.h);
   } else {
     glDisable(GL_SCISSOR_TEST);
   }

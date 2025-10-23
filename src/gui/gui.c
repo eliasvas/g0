@@ -199,34 +199,6 @@ Gui_Key gui_get_active_box_key(Input_Mouse_Button b) {
 }
 
 
-Gui_Signal gui_button(char *str) {
-	Gui_Box *w = gui_box_build_from_str( GB_FLAG_CLICKABLE |
-									GB_FLAG_DRAW_TEXT |
-									GB_FLAG_DRAW_BACKGROUND |
-									GB_FLAG_DRAW_HOT_ANIMATION |
-									GB_FLAG_DRAW_ACTIVE_ANIMATION,
-									str);
-	Gui_Signal signal = gui_get_signal_for_box(w);
-	//if (signal.box->flags & GB_FLAG_HOVERING) { w->flags |= GB_FLAG_DRAW_BORDER; }
-	return signal;
-}
-
-Gui_Signal gui_label(char *str) {
-	Gui_Box *w = gui_box_build_from_str( GB_FLAG_DRAW_TEXT |
-									GB_FLAG_DRAW_BACKGROUND |
-									GB_FLAG_DRAW_HOT_ANIMATION,
-									str);
-	Gui_Signal signal = gui_get_signal_for_box(w);
-	return signal;
-}
-
-Gui_Signal gui_pane(char *str) {
-	Gui_Box *w = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, str);
-	Gui_Signal signal = gui_get_signal_for_box(w);
-	return signal;
-}
-
-
 Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
 	Gui_Signal signal = {0};
 	signal.box = box;
@@ -288,14 +260,6 @@ Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
 			gui_get_ctx()->active_box_keys[mk] = gui_key_zero();
 		}
 	}
-	return signal;
-}
-
-Gui_Signal gui_spacer(Gui_Size size) {
-	Gui_Box *parent = gui_top_parent();
-	gui_set_next_pref_size(parent->child_layout_axis, size);
-	Gui_Box *w = gui_box_build_from_str(0, NULL);
-	Gui_Signal signal = gui_get_signal_for_box(w);
 	return signal;
 }
 
@@ -576,9 +540,10 @@ void gui_layout_root(Gui_Box *root, Gui_Axis axis)  {
 // Gui Rendering (Platform Specific)
 ///////////////////////////////////
 
-void gui_draw_rect(rect r, v4 c) {
+void gui_draw_rect_clip(rect r, v4 c, rect clip_rect) {
   Gui_Context *gctx = gui_get_ctx();
-  R2D* text_rend = r2d_begin(gctx->temp_arena, &(R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, rec(0,0,gctx->screen_dim.x,gctx->screen_dim.y));
+  rect viewport = rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y);
+  R2D* text_rend = r2d_begin(gctx->temp_arena, &(R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, viewport, clip_rect);
   r2d_push_quad(text_rend, (R2D_Quad) {
       .dst_rect = r,
       .c = c,
@@ -586,20 +551,21 @@ void gui_draw_rect(rect r, v4 c) {
   r2d_end(text_rend);
 }
 
-void gui_draw_text(rect r, v4 c, char *s) {
+void gui_draw_text_clip(rect r, v4 c, char *s, rect clip_rect) {
   Gui_Context *gctx = gui_get_ctx();
 
   rect label_rect = font_util_calc_text_rect(g_gui_ctx.font, s, v2m(0,0), gctx->font_scale);
-  rect fitted_rect = rect_try_fit_inside(label_rect, r);
-
+  rect fitted_rect = rect_fit_inside(label_rect, r, RECT_FIT_MODE_CENTER);
   v2 top_left = v2m(fitted_rect.x, fitted_rect.y);
   v2 baseline = v2_sub(top_left, label_rect.p0);
 
-  font_util_debug_draw_text(gctx->font, gctx->temp_arena, rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y), s, baseline, gctx->font_scale, false);
+  rect viewport = rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y);
+  font_util_debug_draw_text(gctx->font, gctx->temp_arena, viewport, clip_rect, s, baseline, gctx->font_scale, false);
 }
 
 
 void gui_render_hierarchy(Gui_Box *box) {
+  Gui_Context *gctx = gui_get_ctx();
 	// Visualize hot_t, active_t values to plug to renderer
 	if (box->flags & GB_FLAG_DRAW_ACTIVE_ANIMATION) {
 		box->color.r += box->active_t/6.0f;
@@ -608,13 +574,21 @@ void gui_render_hierarchy(Gui_Box *box) {
 		box->color.r += box->hot_t/6.0f;
 	}
 
-	// render current box
-  // TODO: clipping
+  rect clip_rect = rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y);
+  if (box->flags & (GB_FLAG_CLICKABLE|GB_FLAG_VIEW_SCROLL_X|GB_FLAG_VIEW_SCROLL_Y)) {
+    for (Gui_Box *parent = box->parent; !gui_box_is_nil(parent); parent = parent->parent) {
+      if (parent->flags & GB_FLAG_CLIP) {
+        clip_rect = parent->r;
+        break;
+      } 
+    }
+  }
+
 	if (box->flags & GB_FLAG_DRAW_BACKGROUND) {
-    gui_draw_rect(box->r, box->color);
+      gui_draw_rect_clip(box->r, box->color, clip_rect);
 	}
 	if (box->flags & GB_FLAG_DRAW_TEXT) {
-    gui_draw_text(box->r, box->color, box->str);
+    gui_draw_text_clip(box->r, box->color, box->str, clip_rect);
   }
 
 	// iterate through hierarchy
@@ -730,7 +704,7 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
       gui_set_next_fixed_width(boundary_rect.w);
       gui_set_next_fixed_height(boundary_rect.h);
       gui_set_next_child_layout_axis(GUI_AXIS_Y); // ?
-      gui_set_next_bg_color(v4m(0.1,0.9,0.9,0.7));
+      gui_set_next_bg_color(v4m(0.1,0.6,0.8,1.0));
       char name[64];
       sprintf(name, "drag_boundary_%s", child->label);
       Gui_Signal s = gui_button(name);
@@ -747,10 +721,10 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
 
         f32 parent_pct_movement = delta_on_split_axis * gui_get_ctx()->dt * 0.10;
         left_child->parent_pct += parent_pct_movement;
-        left_child->parent_pct = clamp(left_child->parent_pct, 0, 1);
+        left_child->parent_pct = clamp(left_child->parent_pct, 0.01, 0.99);
         right_child->parent_pct -= parent_pct_movement;
-        right_child->parent_pct = clamp(right_child->parent_pct, 0, 1);
-        printf("dragging panel %s frame %lu w/ delta %f\n", panel->label, gui_get_ctx()->frame_idx, delta_on_split_axis);
+        right_child->parent_pct = clamp(right_child->parent_pct, 0.01, 0.99);
+        //printf("dragging panel %s frame %lu w/ delta %f\n", panel->label, gui_get_ctx()->frame_idx, delta_on_split_axis);
       }
 
       child = child->next;
@@ -759,3 +733,94 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
   }
 
 }
+
+///////////////////////////////////
+// Gui Widgets
+///////////////////////////////////
+
+Gui_Signal gui_button(char *str) {
+	Gui_Box *w = gui_box_build_from_str( GB_FLAG_CLICKABLE |
+									GB_FLAG_DRAW_TEXT |
+									GB_FLAG_DRAW_BACKGROUND |
+									GB_FLAG_DRAW_HOT_ANIMATION |
+									GB_FLAG_DRAW_ACTIVE_ANIMATION,
+									str);
+	Gui_Signal signal = gui_get_signal_for_box(w);
+	//if (signal.box->flags & GB_FLAG_HOVERING) { w->flags |= GB_FLAG_DRAW_BORDER; }
+	return signal;
+}
+
+Gui_Signal gui_label(char *str) {
+	Gui_Box *w = gui_box_build_from_str( GB_FLAG_DRAW_TEXT |
+									GB_FLAG_DRAW_BACKGROUND |
+									GB_FLAG_DRAW_HOT_ANIMATION,
+									str);
+	Gui_Signal signal = gui_get_signal_for_box(w);
+	return signal;
+}
+
+Gui_Signal gui_pane(char *str) {
+	Gui_Box *w = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, str);
+	Gui_Signal signal = gui_get_signal_for_box(w);
+	return signal;
+}
+
+Gui_Signal gui_spacer(Gui_Size size) {
+	Gui_Box *parent = gui_top_parent();
+	gui_set_next_pref_size(parent->child_layout_axis, size);
+	Gui_Box *w = gui_box_build_from_str(0, NULL);
+	Gui_Signal signal = gui_get_signal_for_box(w);
+	return signal;
+}
+
+
+Gui_Signal gui_scroll_list(char *str, Gui_Axis axis, Gui_Scroll_Data *sdata) {
+  // Scroll list should fit in parent space right?
+  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
+  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
+  gui_set_next_child_layout_axis(gui_axis_flip(axis));
+	Gui_Box *scroll_list = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, str);
+  gui_push_parent(scroll_list);
+
+  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_child_layout_axis(axis);
+  char scroll_region_text[64];
+  sprintf(scroll_region_text, "%s_region", str);
+	Gui_Box *scroll_region = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, scroll_region_text);
+
+  // TODO: Why are all scrollbars 40 px, we should specify in Gui_Scroll_Data maybe?
+  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 40.0, 1.0});
+  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_child_layout_axis(axis);
+  char scroll_bar_text[64];
+  sprintf(scroll_bar_text, "%s_bar", str);
+	Gui_Box *scroll_bar= gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, scroll_bar_text);
+
+  gui_push_parent(scroll_bar);
+  gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, sdata->percent, 0.0});
+  // TODO: Why is the scroll button exactly 50 px, also specify on Gui_Scroll_Data
+  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 50, 0.0});
+  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_bg_color(col(0.6,0.2,0.2,0.9));
+  char scroll_button_text[64];
+  sprintf(scroll_button_text, "%s_button", str);
+	Gui_Box *scroll_button = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLICKABLE, scroll_button_text);
+	Gui_Signal scroll_button_sig = gui_get_signal_for_box(scroll_button);
+  gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0 - sdata->percent, 0.0});
+  if (gui_key_match(scroll_button->key, gui_get_active_box_key(INPUT_MOUSE_LMB))) {
+    f32 scroll_speed = 0.5; // TODO: also configurable
+    sdata->percent += scroll_speed * input_get_mouse_delta().raw[axis] * gui_get_ctx()->dt;
+    sdata->percent = clamp(sdata->percent, 0, 1);
+
+    // TODO: How do we know how much to scroll huh?
+    scroll_region->view_off.raw[axis] = sdata->percent * 900;
+  }
+  gui_pop_parent();
+
+  gui_pop_parent();
+	Gui_Signal signal = gui_get_signal_for_box(scroll_region);
+	return signal;
+}
+
+

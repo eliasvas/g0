@@ -170,7 +170,7 @@ static void r2d_flush(R2D *rend, Batch_Vertex *vertices, u64 count) {
   ogl_render_bundle_draw(&batch_bundle, OGL_PRIM_TYPE_TRIANGLE_FAN, 4, count);
 }
 
-R2D* r2d_begin(Arena *arena, R2D_Cam *cam, rect viewport) {
+R2D* r2d_begin(Arena *arena, R2D_Cam *cam, rect viewport, rect scissor) {
   //m4 proj = m4_ortho(viewport.x,viewport.x+viewport.w,viewport.y+viewport.h,viewport.y,-1,1);
   m4 proj = m4_ortho(0,viewport.w,viewport.h,0,-1,1);
   m4 view = r2d_cam_make_view_mat(cam);
@@ -197,14 +197,17 @@ R2D* r2d_begin(Arena *arena, R2D_Cam *cam, rect viewport) {
       //.rt = ogl_render_target_make(screen_dim.x, screen_dim.y, 2, OGL_TEX_FORMAT_RGBA8U, true),
       .dyn_state = (Ogl_Dyn_State){
         .viewport = viewport,
-        .scissor  = viewport,
-        .flags    = OGL_DYN_STATE_FLAG_BLEND,
+        .scissor  = scissor,
+        .flags    = OGL_DYN_STATE_FLAG_BLEND | OGL_DYN_STATE_FLAG_SCISSOR,
       }
     };
     // FIXME: WHY WHY WHY is a NEW texture made for each new r2d_begin? when is this deinited???? im dumb
     white_tex = ogl_tex_make((u8[]){255,255,255,255}, 1,1, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT});
   }
+
   batch_bundle.dyn_state.viewport = viewport;
+  batch_bundle.dyn_state.scissor = scissor;
+
   ogl_buf_update(&batch_bundle.ubos[0].buffer, 0, &m, 1, sizeof(Batch_Vertex));
 
 
@@ -235,7 +238,6 @@ void r2d_end(R2D *rend) {
     bool tex_added = (tex_idx >= 0);
 
     Batch_Vertex v = (Batch_Vertex){
-      // TODO: make src_rect/dst_rect/color be Rend types! remove this aliasing! (@FIXME)
       .src_rect = *(v4*)&q->src_rect,
       .dst_rect = *(v4*)&q->dst_rect,
       .color = q->c,

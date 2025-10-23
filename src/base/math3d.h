@@ -258,15 +258,15 @@ static bool rect_isect_point(rect r, v2 p) {
 }
 
 static rect rect_calc_bounding_rect(rect r0, rect r1) {
-  v2 p0 = (v2){
-    .x = minimum(r0.x, minimum(r0.x+r0.w, minimum(r1.x, r1.x+r1.w))),
-    .y = minimum(r0.y, minimum(r0.y+r0.h, minimum(r1.y, r1.y+r1.h))),
-  };
+  v2 p0 = v2m(
+    minimum(r0.x, minimum(r0.x+r0.w, minimum(r1.x, r1.x+r1.w))),
+    minimum(r0.y, minimum(r0.y+r0.h, minimum(r1.y, r1.y+r1.h)))
+  );
 
-  v2 p1 = (v2){
-    .x = maximum(r0.x, maximum(r0.x+r0.w, maximum(r1.x, r1.x+r1.w))),
-    .y = maximum(r0.y, maximum(r0.y+r0.h, maximum(r1.y, r1.y+r1.h))),
-  };
+  v2 p1 = v2m(
+    maximum(r0.x, maximum(r0.x+r0.w, maximum(r1.x, r1.x+r1.w))),
+    maximum(r0.y, maximum(r0.y+r0.h, maximum(r1.y, r1.y+r1.h)))
+  );
 
   return (rect) {
     .x = p0.x,
@@ -276,12 +276,29 @@ static rect rect_calc_bounding_rect(rect r0, rect r1) {
   };
 }
 
-static rect rect_try_fit_inside(rect src, rect dest) {
-  // Calculatre mid point of dest rect
-  v2 mp = v2m(dest.x + dest.w/2.0, dest.y + dest.h/2.0);
-  // Sub half of source's dims to center
-  v2 p = v2_sub(mp, v2m(src.w/2.0, src.h/2.0));
-  // Make and return final rectangle
+typedef enum {
+  RECT_FIT_MODE_LEFT,
+  RECT_FIT_MODE_RIGHT,
+  RECT_FIT_MODE_CENTER,
+} Rect_Fit_Mode;
+
+static rect rect_fit_inside(rect src, rect dest, Rect_Fit_Mode mode) {
+  v2 p = v2m(0,0);
+  switch(mode) {
+    case RECT_FIT_MODE_LEFT: {
+      v2 lp = v2m(dest.x, dest.y + dest.h/2.0);
+      p = lp;
+    }break;
+    case RECT_FIT_MODE_RIGHT: {
+      v2 rp = v2m(dest.x + dest.w, dest.y + dest.h/2.0);
+      p = v2_sub(rp, v2m(src.w, 0));
+    }break;
+    case RECT_FIT_MODE_CENTER: {
+      v2 mp = v2m(dest.x + dest.w/2.0, dest.y + dest.h/2.0);
+      p = v2_sub(mp, v2m(src.w/2.0, src.h/2.0));
+    }break;
+    default: break;
+  }
   return (rect) {
     .x = p.x,
     .y = p.y,

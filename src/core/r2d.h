@@ -73,7 +73,7 @@ typedef struct {
   float rot_deg;
 } R2D_Cam;
 
-R2D* r2d_begin(Arena *arena, R2D_Cam *cam, rect viewport);
+R2D* r2d_begin(Arena *arena, R2D_Cam *cam, rect viewport, rect clip_rect);
 void r2d_end(R2D *rend);
 void r2d_push_quad(R2D *rend, R2D_Quad q);
 
