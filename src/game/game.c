@@ -35,17 +35,26 @@ void game_init(Game_State *gs) {
 
   Gui_Panel *c1u = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
   c1u->label = "c1u";
-  c1u->parent_pct = 0.2;
+  c1u->parent_pct = 0.1;
   c1u->split_axis = GUI_AXIS_Y;
   dll_push_back(c1->first, c1->last, c1u);
   c1u->parent = c1;
 
   Gui_Panel *c1d = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
   c1d->label = "c1d";
-  c1d->parent_pct = 0.8;
+  c1d->parent_pct = 0.6;
   c1d->split_axis = GUI_AXIS_Y;
   dll_push_back(c1->first, c1->last, c1d);
   c1d->parent = c1;
+
+  Gui_Panel *k1dd = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
+  k1dd->label = "k1dd";
+  k1dd->parent_pct = 0.3;
+  k1dd->split_axis = GUI_AXIS_Y;
+  dll_push_back(c1->first, c1->last, k1dd);
+  k1dd->parent = c1;
+
+
 
   Gui_Panel *c2 = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
   c2->label = "c2";
@@ -57,10 +66,6 @@ void game_init(Game_State *gs) {
   assert(c1->parent == gui_get_ctx()->root_panel);
   assert(c2->parent == gui_get_ctx()->root_panel);
   // ---------------------------------
-
-
-
-
 
   // Json library testing
   Json_Element *root = json_parse(gs->frame_arena, test_str);
@@ -125,26 +130,34 @@ void game_render(Game_State *gs, float dt) {
   gui_pop_parent();
 
   Gui_Box *leftdown = gui_box_lookup_from_key(0, gui_key_from_str("panel_c1d"));
-  //leftdown->view_off.y = 20;
   assert(!gui_box_is_nil(leftdown));
   gui_set_next_parent(leftdown);
 
-  static Gui_Scroll_Data sdata = {};
-  Gui_Signal scroll_list = gui_scroll_list("scroll_list", GUI_AXIS_Y, &sdata);
-
-  gui_push_parent(scroll_list.box);
-  for (u32 i = 0; i < 10; i+=1) {
-    gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
-    gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  static Gui_Scroll_Data sdata = {
+    .scroll_percent = 0.0,
+    .item_px = 100,
+    .item_count = 4,
+    .scroll_bar_px = 20,
+    .scroll_button_px = 40,
+    .scroll_button_color = (color){{0.6,0.2,0.2,1}},
+    .scroll_speed = 0.5,
+  };
+  if (input_mkey_pressed(INPUT_MOUSE_RMB))sdata.item_count+=1;
+  gui_scroll_list_begin("scroll_list", GUI_AXIS_Y, &sdata);
+  for (s32 i = 0; i < sdata.item_count; i+=1) {
     gui_set_next_bg_color(col(i * 0.1, 0.2, 0.4, 0.5));
     char name[64];
     sprintf(name, "button_%i", i);
     gui_button(name);
   }
-  gui_pop_parent();
+  gui_scroll_list_end("scroll_list");
+
+  Gui_Box *leftdd = gui_box_lookup_from_key(0, gui_key_from_str("panel_k1dd"));
+  assert(!gui_box_is_nil(leftdd));
+  gui_set_next_parent(leftdd);
+  gui_multi_line_text("some id text", "Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn.");
 
   gui_frame_end();
-
 
 #define ATLAS_SPRITES_X 16
 #define ATLAS_SPRITES_Y 10
@@ -187,6 +200,7 @@ void game_render(Game_State *gs, float dt) {
       .rot_deg = ts,
   });
   r2d_end(rend);
+
 
   /*
   // Effect Testing

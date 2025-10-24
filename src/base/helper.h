@@ -64,6 +64,7 @@ static f32 F32_MIN_POS = 1.175494351e-38F;
 #define minimum(a, b) ((a) < (b) ? (a) : (b))
 #define step(threshold, value) ((value) < (threshold) ? 0 : 1)
 #define clamp(x, a, b)  (maximum(a, minimum(x, b)))
+#define lerp(a, b, x) ((b)*(x) + (a)*(1-(x)))
 #define is_pow2(x) ((x & (x - 1)) == 0)
 #define is_digit(x) (x >= '0' && x <= '9')
 #define is_upper(x) (x >= 'A' && x <= 'Z')

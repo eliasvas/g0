@@ -692,19 +692,18 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
       // 3. Calculate boundary rect and make a FIXED Gui_Box
       rect boundary_rect = child_rect;
       if (panel->split_axis == GUI_AXIS_X) {
-        // TODO: why 2 and 4? maybe we just need to scale actuall thickness.. am i dumb
-        boundary_rect.x += child_rect.w - BOUNDARY_THICKNESS*2;
-        boundary_rect.w = BOUNDARY_THICKNESS*4;
+        boundary_rect.x += child_rect.w - BOUNDARY_THICKNESS;
+        boundary_rect.w = BOUNDARY_THICKNESS*2;
       } else {
-        boundary_rect.y += child_rect.h - BOUNDARY_THICKNESS*2;
-        boundary_rect.h = BOUNDARY_THICKNESS*4;
+        boundary_rect.y += child_rect.h - BOUNDARY_THICKNESS;
+        boundary_rect.h = BOUNDARY_THICKNESS*2;
       } 
       gui_set_next_fixed_x(boundary_rect.x);
       gui_set_next_fixed_y(boundary_rect.y);
       gui_set_next_fixed_width(boundary_rect.w);
       gui_set_next_fixed_height(boundary_rect.h);
       gui_set_next_child_layout_axis(GUI_AXIS_Y); // ?
-      gui_set_next_bg_color(v4m(0.1,0.6,0.8,1.0));
+      gui_set_next_bg_color(v4m(0.1,0.6,0.8,1));
       char name[64];
       sprintf(name, "drag_boundary_%s", child->label);
       Gui_Signal s = gui_button(name);
@@ -774,53 +773,116 @@ Gui_Signal gui_spacer(Gui_Size size) {
 }
 
 
-Gui_Signal gui_scroll_list(char *str, Gui_Axis axis, Gui_Scroll_Data *sdata) {
+Gui_Signal gui_scroll_list_begin(char *str, Gui_Axis axis, Gui_Scroll_Data *sdata) {
+  gui_push_bg_color(col(0.2,0.2,0.2,1.0));
   // Scroll list should fit in parent space right?
-  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
-  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
+  gui_set_next_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
+  gui_set_next_pref_size(gui_axis_flip(axis), (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
   gui_set_next_child_layout_axis(gui_axis_flip(axis));
 	Gui_Box *scroll_list = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, str);
   gui_push_parent(scroll_list);
 
-  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_pref_size(gui_axis_flip(axis), (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_child_layout_axis(axis);
   char scroll_region_text[64];
   sprintf(scroll_region_text, "%s_region", str);
-	Gui_Box *scroll_region = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, scroll_region_text);
+	Gui_Box *scroll_region = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND, scroll_region_text);
 
-  // TODO: Why are all scrollbars 40 px, we should specify in Gui_Scroll_Data maybe?
-  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 40.0, 1.0});
-  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_set_next_child_layout_axis(axis);
-  char scroll_bar_text[64];
-  sprintf(scroll_bar_text, "%s_bar", str);
-	Gui_Box *scroll_bar= gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, scroll_bar_text);
+  f32 scroll_region_dim = (axis == GUI_AXIS_Y) ? scroll_region->r.h : scroll_region->r.w;
+  f32 visible_items =  scroll_region_dim / sdata->item_px;
+  f32 scroll_button_dim = scroll_region_dim * minimum(1.0, visible_items / (f32)sdata->item_count);
 
-  gui_push_parent(scroll_bar);
-  gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, sdata->percent, 0.0});
-  // TODO: Why is the scroll button exactly 50 px, also specify on Gui_Scroll_Data
-  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, 50, 0.0});
-  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_set_next_bg_color(col(0.6,0.2,0.2,0.9));
-  char scroll_button_text[64];
-  sprintf(scroll_button_text, "%s_button", str);
-	Gui_Box *scroll_button = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLICKABLE, scroll_button_text);
-	Gui_Signal scroll_button_sig = gui_get_signal_for_box(scroll_button);
-  gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0 - sdata->percent, 0.0});
-  if (gui_key_match(scroll_button->key, gui_get_active_box_key(INPUT_MOUSE_LMB))) {
-    f32 scroll_speed = 0.5; // TODO: also configurable
-    sdata->percent += scroll_speed * input_get_mouse_delta().raw[axis] * gui_get_ctx()->dt;
-    sdata->percent = clamp(sdata->percent, 0, 1);
+  f32 min_dim_px = 0;
+  f32 max_dim_px = sdata->item_px * (sdata->item_count - visible_items); 
 
-    // TODO: How do we know how much to scroll huh?
-    scroll_region->view_off.raw[axis] = sdata->percent * 900;
+
+  if (visible_items < (f32)sdata->item_count) {
+    gui_set_next_pref_size(gui_axis_flip(axis), (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, sdata->scroll_bar_px, 1.0});
+    gui_set_next_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_child_layout_axis(axis);
+    gui_set_next_bg_color(v4_multf(gui_top_bg_color(), 0.9));
+    char scroll_bar_text[64];
+    sprintf(scroll_bar_text, "%s_bar", str);
+    Gui_Box *scroll_bar= gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND, scroll_bar_text);
+
+    gui_push_parent(scroll_bar);
+    gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, sdata->scroll_percent, 0.0});
+    gui_set_next_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, scroll_button_dim, 1.0});
+    gui_set_next_pref_size(gui_axis_flip(axis), (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_bg_color(sdata->scroll_button_color);
+    char scroll_button_text[64];
+    sprintf(scroll_button_text, "%s_button", str);
+    Gui_Box *scroll_button = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLICKABLE, scroll_button_text);
+    Gui_Signal scroll_button_sig = gui_get_signal_for_box(scroll_button);
+    gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0 - sdata->scroll_percent, 0.0});
+    if (gui_key_match(scroll_button_sig.box->key, gui_get_active_box_key(INPUT_MOUSE_LMB))) {
+      sdata->scroll_percent += sdata->scroll_speed * input_get_mouse_delta().raw[axis] * gui_get_ctx()->dt;
+      sdata->scroll_percent = clamp(sdata->scroll_percent, 0, 1);
+    }
+    scroll_region->view_off.raw[axis] = lerp(min_dim_px, max_dim_px, sdata->scroll_percent);
+    gui_pop_parent();
+
+    gui_pop_parent();
+    gui_pop_bg_color();
+
+  }
+
+	Gui_Signal sig = gui_get_signal_for_box(scroll_region);
+  gui_push_parent(sig.box);
+  gui_push_child_layout_axis(axis);
+  gui_push_pref_size(gui_axis_flip(axis), (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_push_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, sdata->item_px, 1.0});
+
+	return sig;
+}
+
+void gui_scroll_list_end(char *str) {
+  gui_pop_parent();
+  gui_pop_child_layout_axis();
+  gui_pop_pref_width();
+  gui_pop_pref_height();
+}
+
+// TODO: add scrolling
+// TODO: make this fast, rn its dog slow ok?
+// TODO: Ids should be unique somehow right? i mean label
+f32 font_util_measure_text_width(Font_Info *font_info, char *text, f32 scale);
+Gui_Signal gui_multi_line_text(char *str, char *text) {
+  gui_push_bg_color(col(0.2,0.2,0.2,1.0));
+  // Scroll list should fit in parent space right?
+  gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_child_layout_axis(GUI_AXIS_Y);
+  Gui_Box *text_container = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, str);
+
+  gui_push_parent(text_container);
+  f32 max_x = text_container->r.w;
+
+  char dirty_button_label[1024];
+  M_ZERO_ARRAY(dirty_button_label);
+  u32 start_idx = 0;
+  u32 end_idx = 0;
+  
+  while (max_x && str_len(text) > end_idx) {
+    u32 text_w = font_util_measure_text_width(gui_get_ctx()->font, dirty_button_label, gui_get_ctx()->font_scale);
+    while (text_w < max_x && str_len(text) > end_idx) {
+      dirty_button_label[end_idx-start_idx] = text[end_idx];
+      end_idx+=1;
+      text_w = font_util_measure_text_width(gui_get_ctx()->font, dirty_button_label, gui_get_ctx()->font_scale);
+    }
+    u32 text_h = font_util_measure_text_height(gui_get_ctx()->font, dirty_button_label, gui_get_ctx()->font_scale);
+
+    gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, text_h, 0.0});
+    gui_label(dirty_button_label);
+
+    M_ZERO_ARRAY(dirty_button_label);
+    start_idx = end_idx;
   }
   gui_pop_parent();
 
-  gui_pop_parent();
-	Gui_Signal signal = gui_get_signal_for_box(scroll_region);
-	return signal;
+  return gui_get_signal_for_box(text_container);
 }
 
 

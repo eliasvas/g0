@@ -1,6 +1,8 @@
 #ifndef GUI_H__
 #define GUI_H__
 
+//TODO: use bufs instead of char* for ids and also support ### style modifiers
+
 #include "base/base_inc.h"
 #include "core/core_inc.h"
 
@@ -275,7 +277,6 @@ Gui_Panel_Itr gui_pop_panel_itr(void);
 bool gui_empty_panel_itr(void);
 void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rect);
 
-
 // pushes fixed widths heights (TODO -- i should probably add all the lower level stack functions in future)
 void gui_push_rect(rect r);
 void gui_set_next_rect(rect r);
@@ -292,10 +293,19 @@ Gui_Signal gui_label(char *str);
 Gui_Signal gui_spacer(Gui_Size size);
 
 typedef struct {
-  f32 percent;
+  f32 scroll_percent;
+  f32 item_px;
+  s32 item_count;
+
+  u32 scroll_bar_px;
+  u32 scroll_button_px;
+  color scroll_button_color;
+  f32 scroll_speed;
 } Gui_Scroll_Data;
 
-Gui_Signal gui_scroll_list(char *str, Gui_Axis axis, Gui_Scroll_Data* sdata);
+Gui_Signal gui_scroll_list_begin(char *str, Gui_Axis axis, Gui_Scroll_Data* sdata);
+void gui_scroll_list_end(char *str);
 
+Gui_Signal gui_multi_line_text(char *str, char *text);
 
 #endif
