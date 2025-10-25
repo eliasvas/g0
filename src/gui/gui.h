@@ -1,8 +1,6 @@
 #ifndef GUI_H__
 #define GUI_H__
 
-//TODO: use bufs instead of char* for ids and also support ### style modifiers
-
 #include "base/base_inc.h"
 #include "core/core_inc.h"
 
@@ -66,7 +64,7 @@ struct Gui_Box {
 
   // keying
   Gui_Key key;
-  char str[128];
+  buf s;
 
   // layouting state
   v2 fixed_pos;
@@ -104,7 +102,7 @@ struct Gui_Panel {
 
   f32 parent_pct;
   Gui_Axis split_axis;
-  char *label; // TODO: maybe make this a buf?
+  buf label;
 };
 
 typedef struct Gui_Panel_Itr Gui_Panel_Itr;
@@ -205,15 +203,15 @@ void gui_frame_end();
 void gui_render_hierarchy(Gui_Box *box);
 
 Gui_Key gui_key_zero(void);
-Gui_Key gui_key_from_str(char *s);
+Gui_Key gui_key_from_str(buf s);
 b32 gui_key_match(Gui_Key a, Gui_Key b);
 
 Gui_Context* gui_get_ctx();
 Gui_Box *gui_box_nil_id();
 b32 gui_box_is_nil(Gui_Box *box);
-Gui_Box *gui_box_make(Gui_Box_Flags flags, char *str);
+Gui_Box *gui_box_make(Gui_Box_Flags flags, buf s);
 Gui_Box *gui_box_lookup_from_key(Gui_Box_Flags flags, Gui_Key key);
-Gui_Box *gui_box_build_from_str(Gui_Box_Flags flags, char *str);
+Gui_Box *gui_box_build_from_str(Gui_Box_Flags flags, buf s);
 Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key);
 
 void gui_autopop_all_stacks();
@@ -287,9 +285,9 @@ Gui_Size gui_set_next_pref_size(Gui_Axis axis, Gui_Size v);
 Gui_Size gui_pop_pref_size(Gui_Axis axis);
 
 // widgets
-Gui_Signal gui_button(char *str);
-Gui_Signal gui_pane(char *str);
-Gui_Signal gui_label(char *str);
+Gui_Signal gui_button(buf s);
+Gui_Signal gui_pane(buf s);
+Gui_Signal gui_label(buf s);
 Gui_Signal gui_spacer(Gui_Size size);
 
 typedef struct {
@@ -303,9 +301,9 @@ typedef struct {
   f32 scroll_speed;
 } Gui_Scroll_Data;
 
-Gui_Signal gui_scroll_list_begin(char *str, Gui_Axis axis, Gui_Scroll_Data* sdata);
-void gui_scroll_list_end(char *str);
+Gui_Signal gui_scroll_list_begin(buf s, Gui_Axis axis, Gui_Scroll_Data* sdata);
+void gui_scroll_list_end(buf s);
 
-Gui_Signal gui_multi_line_text(char *str, char *text);
+Gui_Signal gui_multi_line_text(buf s, buf text);
 
 #endif

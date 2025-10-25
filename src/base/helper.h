@@ -304,9 +304,9 @@ static f64 pwr(double b, int e) {
 // String stuff
 //////////////////////////////
 
-#define MAKE_STR(s) ((buf){s, str_len(s)})
+#define MAKE_STR(s) ((buf){s, cstr_len(s)})
 
-static u32 str_len(char *s) {
+static u32 cstr_len(char *s) {
   u32 count = 0;
   while (s[count]) count++;
   return count;
@@ -391,7 +391,7 @@ static b32 str_to_bool(char *s, s64 size) {
 
 typedef struct {
   char *data;
-  u64 count;
+  s64 count;
 } buf;
 
 static buf buf_make(char *data, u64 count) {
@@ -420,6 +420,15 @@ static f64 buf_to_float(buf b) {
 static bool buf_to_bool(buf b) {
   return str_to_bool(b.data, b.count);
 }
- 
+
+static buf buf_lcut(buf b, buf delim) {
+  for (s64 i = 0; i < (b.count - delim.count); i+=1) {
+    buf candidate = buf_make(b.data, i);
+    if (buf_eq(delim, buf_make(&b.data[i], delim.count))) return candidate;
+  }
+  return b;
+}
+
+
 
 #endif

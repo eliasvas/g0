@@ -25,7 +25,7 @@ void gui_context_init(Arena *temp_arena, Font_Info *font) {
   g_gui_ctx.root_panel = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
   g_gui_ctx.root_panel->parent_pct = 1.0;
   g_gui_ctx.root_panel->split_axis = GUI_AXIS_X;
-  g_gui_ctx.root_panel->label = "root_panel";
+  g_gui_ctx.root_panel->label = MAKE_STR("root_panel");
 }
 
 Gui_Context* gui_get_ctx() {
@@ -48,11 +48,11 @@ Gui_Key gui_key_zero(){
 	return gui_key_make(0);
 }
 
-Gui_Key gui_key_from_str(char *s) {
+Gui_Key gui_key_from_str(buf s) {
 	Gui_Key res = gui_key_zero();
-	if (s && str_len(s)) {
-		res = gui_key_make(djb2((u8*)s));
-	}
+  if (s.count > 0) {
+    res = gui_key_make(djb2_buf(s));
+  }
 	return res;
 }
 
@@ -180,12 +180,11 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 }
 
 
-Gui_Box *gui_box_build_from_str(Gui_Box_Flags flags, char *str) {
-	Gui_Key key = gui_key_from_str(str);
+Gui_Box *gui_box_build_from_str(Gui_Box_Flags flags, buf s) {
+	Gui_Key key = gui_key_from_str(s);
 	Gui_Box *box = gui_box_build_from_key(flags, key);
-	if (str){
-    // TODO: remove c standard library please
-		strcpy(box->str, str);
+	if (s.count > 0){
+    box->s = s;
 	}
 	return box;
 }
@@ -275,7 +274,7 @@ void gui_build_begin(void) {
 
 	// build top level's root guiBox
 	gui_set_next_child_layout_axis(GUI_AXIS_Y);
-	Gui_Box *root = gui_box_build_from_str(0, "ImRootPlsDontPutSameHashSomewhereElse");
+	Gui_Box *root = gui_box_build_from_str(0, MAKE_STR("ImRootPlsDontPutSameHashSomewhereElse"));
 	gui_push_parent(root);
   gui_get_ctx()->root = root;
 
@@ -386,9 +385,9 @@ void gui_layout_calc_constant_sizes(Gui_Box *root, Gui_Axis axis) {
       f32 text_size = 0;
       // TODO: make a font_util_measure_text_dim? :)
       if (axis == GUI_AXIS_X) {
-        text_size = font_util_measure_text_width(state->font, root->str, state->font_scale);
+        text_size = font_util_measure_text_width(state->font, root->s, state->font_scale);
       } else {
-        text_size = font_util_measure_text_height(state->font, root->str, state->font_scale);
+        text_size = font_util_measure_text_height(state->font, root->s, state->font_scale);
       }
       root->fixed_size.raw[axis] = padding + text_size;
   }
@@ -543,24 +542,25 @@ void gui_layout_root(Gui_Box *root, Gui_Axis axis)  {
 void gui_draw_rect_clip(rect r, v4 c, rect clip_rect) {
   Gui_Context *gctx = gui_get_ctx();
   rect viewport = rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y);
-  R2D* text_rend = r2d_begin(gctx->temp_arena, &(R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, viewport, clip_rect);
-  r2d_push_quad(text_rend, (R2D_Quad) {
+  R2D* r_rend = r2d_begin(gctx->temp_arena, &(R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, viewport, clip_rect);
+  r2d_push_quad(r_rend, (R2D_Quad) {
       .dst_rect = r,
       .c = c,
   });
-  r2d_end(text_rend);
+  r2d_end(r_rend);
 }
 
-void gui_draw_text_clip(rect r, v4 c, char *s, rect clip_rect) {
+void gui_draw_text_clip(rect r, v4 c, buf s, rect clip_rect) {
   Gui_Context *gctx = gui_get_ctx();
+  buf s_without_doublehash = buf_lcut(s, MAKE_STR("##"));
 
-  rect label_rect = font_util_calc_text_rect(g_gui_ctx.font, s, v2m(0,0), gctx->font_scale);
+  rect label_rect = font_util_calc_text_rect(g_gui_ctx.font, s_without_doublehash, v2m(0,0), gctx->font_scale);
   rect fitted_rect = rect_fit_inside(label_rect, r, RECT_FIT_MODE_CENTER);
   v2 top_left = v2m(fitted_rect.x, fitted_rect.y);
   v2 baseline = v2_sub(top_left, label_rect.p0);
 
   rect viewport = rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y);
-  font_util_debug_draw_text(gctx->font, gctx->temp_arena, viewport, clip_rect, s, baseline, gctx->font_scale, false);
+  font_util_debug_draw_text(gctx->font, gctx->temp_arena, viewport, clip_rect, s_without_doublehash, baseline, gctx->font_scale, false);
 }
 
 
@@ -588,7 +588,7 @@ void gui_render_hierarchy(Gui_Box *box) {
       gui_draw_rect_clip(box->r, box->color, clip_rect);
 	}
 	if (box->flags & GB_FLAG_DRAW_TEXT) {
-    gui_draw_text_clip(box->r, box->color, box->str, clip_rect);
+    gui_draw_text_clip(box->r, box->color, box->s, clip_rect);
   }
 
 	// iterate through hierarchy
@@ -667,11 +667,10 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
       gui_set_next_fixed_height(r.h - BOUNDARY_THICKNESS*2);
       gui_set_next_child_layout_axis(GUI_AXIS_Y); // ?
       gui_set_next_bg_color(v4m(0.2,0.2,0.2,0.7)); // TODO: styles?
-      char name[64];
-      sprintf(name, "panel_%s", panel->label);
+                                                   
+      buf name = arena_sprintf(gui_get_ctx()->temp_arena, "panel_%.*s", panel->label.count, panel->label.data);
       Gui_Signal s = gui_pane(name);
       s.flags &= ~GB_FLAG_DRAW_TEXT;
-
     }
 
     itr = gui_panel_traverse_dfs_preorder(itr);
@@ -704,8 +703,8 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
       gui_set_next_fixed_height(boundary_rect.h);
       gui_set_next_child_layout_axis(GUI_AXIS_Y); // ?
       gui_set_next_bg_color(v4m(0.1,0.6,0.8,1));
-      char name[64];
-      sprintf(name, "drag_boundary_%s", child->label);
+
+      buf name = arena_sprintf(gui_get_ctx()->temp_arena, "drag_boundary_%.*s", child->label.count, child->label.data);
       Gui_Signal s = gui_button(name);
       s.box->flags &= ~GB_FLAG_DRAW_TEXT;
 
@@ -737,29 +736,29 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
 // Gui Widgets
 ///////////////////////////////////
 
-Gui_Signal gui_button(char *str) {
+Gui_Signal gui_button(buf s) {
 	Gui_Box *w = gui_box_build_from_str( GB_FLAG_CLICKABLE |
 									GB_FLAG_DRAW_TEXT |
 									GB_FLAG_DRAW_BACKGROUND |
 									GB_FLAG_DRAW_HOT_ANIMATION |
 									GB_FLAG_DRAW_ACTIVE_ANIMATION,
-									str);
+									s);
 	Gui_Signal signal = gui_get_signal_for_box(w);
 	//if (signal.box->flags & GB_FLAG_HOVERING) { w->flags |= GB_FLAG_DRAW_BORDER; }
 	return signal;
 }
 
-Gui_Signal gui_label(char *str) {
+Gui_Signal gui_label(buf s) {
 	Gui_Box *w = gui_box_build_from_str( GB_FLAG_DRAW_TEXT |
 									GB_FLAG_DRAW_BACKGROUND |
 									GB_FLAG_DRAW_HOT_ANIMATION,
-									str);
+									s);
 	Gui_Signal signal = gui_get_signal_for_box(w);
 	return signal;
 }
 
-Gui_Signal gui_pane(char *str) {
-	Gui_Box *w = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, str);
+Gui_Signal gui_pane(buf s) {
+	Gui_Box *w = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, s);
 	Gui_Signal signal = gui_get_signal_for_box(w);
 	return signal;
 }
@@ -767,26 +766,26 @@ Gui_Signal gui_pane(char *str) {
 Gui_Signal gui_spacer(Gui_Size size) {
 	Gui_Box *parent = gui_top_parent();
 	gui_set_next_pref_size(parent->child_layout_axis, size);
-	Gui_Box *w = gui_box_build_from_str(0, NULL);
+	Gui_Box *w = gui_box_build_from_str(0, buf_make(nullptr, 0));
 	Gui_Signal signal = gui_get_signal_for_box(w);
 	return signal;
 }
 
 
-Gui_Signal gui_scroll_list_begin(char *str, Gui_Axis axis, Gui_Scroll_Data *sdata) {
+Gui_Signal gui_scroll_list_begin(buf s, Gui_Axis axis, Gui_Scroll_Data *sdata) {
   gui_push_bg_color(col(0.2,0.2,0.2,1.0));
   // Scroll list should fit in parent space right?
   gui_set_next_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
   gui_set_next_pref_size(gui_axis_flip(axis), (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 1.0});
   gui_set_next_child_layout_axis(gui_axis_flip(axis));
-	Gui_Box *scroll_list = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, str);
+	Gui_Box *scroll_list = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, s);
   gui_push_parent(scroll_list);
 
   gui_set_next_pref_size(gui_axis_flip(axis), (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_child_layout_axis(axis);
-  char scroll_region_text[64];
-  sprintf(scroll_region_text, "%s_region", str);
+
+  buf scroll_region_text = arena_sprintf(gui_get_ctx()->temp_arena, "%.*s_region", s.count, s.data);
 	Gui_Box *scroll_region = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND, scroll_region_text);
 
   f32 scroll_region_dim = (axis == GUI_AXIS_Y) ? scroll_region->r.h : scroll_region->r.w;
@@ -802,8 +801,8 @@ Gui_Signal gui_scroll_list_begin(char *str, Gui_Axis axis, Gui_Scroll_Data *sdat
     gui_set_next_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
     gui_set_next_child_layout_axis(axis);
     gui_set_next_bg_color(v4_multf(gui_top_bg_color(), 0.9));
-    char scroll_bar_text[64];
-    sprintf(scroll_bar_text, "%s_bar", str);
+
+    buf scroll_bar_text = arena_sprintf(gui_get_ctx()->temp_arena, "%.*s_bar", s.count, s.data);
     Gui_Box *scroll_bar= gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND, scroll_bar_text);
 
     gui_push_parent(scroll_bar);
@@ -811,8 +810,7 @@ Gui_Signal gui_scroll_list_begin(char *str, Gui_Axis axis, Gui_Scroll_Data *sdat
     gui_set_next_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, scroll_button_dim, 1.0});
     gui_set_next_pref_size(gui_axis_flip(axis), (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
     gui_set_next_bg_color(sdata->scroll_button_color);
-    char scroll_button_text[64];
-    sprintf(scroll_button_text, "%s_button", str);
+    buf scroll_button_text = arena_sprintf(gui_get_ctx()->temp_arena, "%.*s_sbutton", s.count, s.data);
     Gui_Box *scroll_button = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLICKABLE, scroll_button_text);
     Gui_Signal scroll_button_sig = gui_get_signal_for_box(scroll_button);
     gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0 - sdata->scroll_percent, 0.0});
@@ -837,7 +835,7 @@ Gui_Signal gui_scroll_list_begin(char *str, Gui_Axis axis, Gui_Scroll_Data *sdat
 	return sig;
 }
 
-void gui_scroll_list_end(char *str) {
+void gui_scroll_list_end(buf s) {
   gui_pop_parent();
   gui_pop_child_layout_axis();
   gui_pop_pref_width();
@@ -847,42 +845,41 @@ void gui_scroll_list_end(char *str) {
 // TODO: add scrolling
 // TODO: make this fast, rn its dog slow ok?
 // TODO: Ids should be unique somehow right? i mean label
-f32 font_util_measure_text_width(Font_Info *font_info, char *text, f32 scale);
-Gui_Signal gui_multi_line_text(char *str, char *text) {
+// TODO: Don't use chars, convert to bufs!
+Gui_Signal gui_multi_line_text(buf s, buf text) {
   gui_push_bg_color(col(0.2,0.2,0.2,1.0));
   // Scroll list should fit in parent space right?
   gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_child_layout_axis(GUI_AXIS_Y);
-  Gui_Box *text_container = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, str);
+  Gui_Box *text_container = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, s);
 
   gui_push_parent(text_container);
   f32 max_x = text_container->r.w;
 
-  char dirty_button_label[1024];
-  M_ZERO_ARRAY(dirty_button_label);
+  //char dirty_button_label[1024];
   u32 start_idx = 0;
   u32 end_idx = 0;
   
-  while (max_x && str_len(text) > end_idx) {
-    u32 text_w = font_util_measure_text_width(gui_get_ctx()->font, dirty_button_label, gui_get_ctx()->font_scale);
-    while (text_w < max_x && str_len(text) > end_idx) {
-      dirty_button_label[end_idx-start_idx] = text[end_idx];
+  while (max_x && text.count > end_idx) {
+    char *dirty_button_label = arena_push_array(gui_get_ctx()->temp_arena, char, 1024);
+
+    u32 text_w = font_util_measure_text_width(gui_get_ctx()->font, MAKE_STR(dirty_button_label), gui_get_ctx()->font_scale);
+    while (text_w < max_x && text.count > end_idx) {
+      dirty_button_label[end_idx-start_idx] = text.data[end_idx];
       end_idx+=1;
-      text_w = font_util_measure_text_width(gui_get_ctx()->font, dirty_button_label, gui_get_ctx()->font_scale);
+      text_w = font_util_measure_text_width(gui_get_ctx()->font, MAKE_STR(dirty_button_label), gui_get_ctx()->font_scale);
     }
-    u32 text_h = font_util_measure_text_height(gui_get_ctx()->font, dirty_button_label, gui_get_ctx()->font_scale);
+    u32 text_h = font_util_measure_text_height(gui_get_ctx()->font, MAKE_STR(dirty_button_label), gui_get_ctx()->font_scale);
 
     gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
     gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, text_h, 0.0});
-    gui_label(dirty_button_label);
+    gui_label(MAKE_STR((char*)dirty_button_label));
 
-    M_ZERO_ARRAY(dirty_button_label);
     start_idx = end_idx;
   }
   gui_pop_parent();
 
   return gui_get_signal_for_box(text_container);
 }
-
 

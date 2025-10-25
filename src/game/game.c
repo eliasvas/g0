@@ -26,7 +26,7 @@ void game_init(Game_State *gs) {
   gui_context_init(gs->frame_arena, &gs->font);
   // DUMMY gui panel hierarchy for testing
   Gui_Panel *c1 = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
-  c1->label = "c1";
+  c1->label = MAKE_STR("c1");
   c1->parent_pct = 0.4;
   c1->split_axis = GUI_AXIS_Y;
   dll_push_back(gui_get_ctx()->root_panel->first, gui_get_ctx()->root_panel->last, c1);
@@ -34,21 +34,21 @@ void game_init(Game_State *gs) {
   assert(c1->parent == gui_get_ctx()->root_panel);
 
   Gui_Panel *c1u = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
-  c1u->label = "c1u";
+  c1u->label = MAKE_STR("c1u");
   c1u->parent_pct = 0.1;
   c1u->split_axis = GUI_AXIS_Y;
   dll_push_back(c1->first, c1->last, c1u);
   c1u->parent = c1;
 
   Gui_Panel *c1d = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
-  c1d->label = "c1d";
+  c1d->label = MAKE_STR("c1d");
   c1d->parent_pct = 0.6;
   c1d->split_axis = GUI_AXIS_Y;
   dll_push_back(c1->first, c1->last, c1d);
   c1d->parent = c1;
 
   Gui_Panel *k1dd = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
-  k1dd->label = "k1dd";
+  k1dd->label = MAKE_STR("k1dd");
   k1dd->parent_pct = 0.3;
   k1dd->split_axis = GUI_AXIS_Y;
   dll_push_back(c1->first, c1->last, k1dd);
@@ -57,7 +57,7 @@ void game_init(Game_State *gs) {
 
 
   Gui_Panel *c2 = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
-  c2->label = "c2";
+  c2->label = MAKE_STR("c2");
   c2->parent_pct = 0.6;
   c2->split_axis = GUI_AXIS_X;
   dll_push_back(gui_get_ctx()->root_panel->first, gui_get_ctx()->root_panel->last, c2);
@@ -75,7 +75,7 @@ void game_init(Game_State *gs) {
   assert(e);
   Json_Element *e2 = json_lookup(e, MAKE_STR("class"));
   assert(e2);
-  assert(str_cmp("soldier", e2->value.data, str_len("soldier")));
+  assert(str_cmp("soldier", e2->value.data, cstr_len("soldier")));
 
   Json_Element *r = json_lookup(root, MAKE_STR("msg-nums"));
   assert(r);
@@ -85,13 +85,16 @@ void game_init(Game_State *gs) {
   assert(r2);
   assert(equalf(buf_to_float(r2->first->next->value), 5.22, 0.1));
 
-  Json_Element *r3 = json_lookup(root, MAKE_STR("msg-bools"));
+  buf lstr = arena_sprintf(gs->frame_arena, "msg-%s", "bools");
+  assert(buf_eq(MAKE_STR("msg-bools"), lstr));
+  Json_Element *r3 = json_lookup(root, lstr);
+  //Json_Element *r3 = json_lookup(root, MAKE_STR("msg-bools"));
   assert(r3);
   assert(buf_to_bool(r3->first->value) == true);
 }
 
 void game_update(Game_State *gs, float dt) {
-  Gui_Box *right = gui_box_lookup_from_key(0, gui_key_from_str("panel_c2"));
+  Gui_Box *right = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_c2")));
   if (!gui_box_is_nil(right)) {
     gs->game_viewport = right->r; 
   }
@@ -101,27 +104,23 @@ void game_render(Game_State *gs, float dt) {
   ogl_clear(col(0.0,0.0,0.0,1.0));
   gui_frame_begin(gs->screen_dim, dt);
 
-  Gui_Box *leftup = gui_box_lookup_from_key(0, gui_key_from_str("panel_c1u"));
+  Gui_Box *leftup = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_c1u")));
   assert(!gui_box_is_nil(leftup));
   gui_push_parent(leftup);
-  // FIXME: These char[] are stack variables, we shouldn't do this..
-  char fps_name[64];
-  sprintf(fps_name, "fps: %f", 1.0/dt); // TODO: make an API that will not consider %% arguments, so we CAN animate them
+  buf fps_name = arena_sprintf(gs->frame_arena, "fps: %f", 1.0/dt); 
   gui_set_next_bg_color(v4m(0.4,0.3,0.2,1));
   gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_label(fps_name);
 
   v2 mp = input_get_mouse_pos();
-  char mp_name[64];
-  sprintf(mp_name, "mp: (%.0f,%.0f)", mp.x, mp.y); // TODO: make an API that will not consider %% arguments, so we CAN animate them
+  buf mp_name = arena_sprintf(gs->frame_arena, "mp: (%.0f,%.0f)", mp.x, mp.y); 
   gui_set_next_bg_color(v4m(0.4,0.2,0.3,1));
   gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_label(mp_name);
 
-  char pers_name[64];
-  sprintf(pers_name, "allocd: %lu bytes", gs->persistent_arena->committed); // TODO: make an API that will not consider %% arguments, so we CAN animate them
+  buf pers_name = arena_sprintf(gs->frame_arena, "allocd: %lu bytes", gs->persistent_arena->committed); 
   gui_set_next_bg_color(v4m(0.2,0.3,0.4,1));
   gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
@@ -129,7 +128,7 @@ void game_render(Game_State *gs, float dt) {
 
   gui_pop_parent();
 
-  Gui_Box *leftdown = gui_box_lookup_from_key(0, gui_key_from_str("panel_c1d"));
+  Gui_Box *leftdown = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_c1d")));
   assert(!gui_box_is_nil(leftdown));
   gui_set_next_parent(leftdown);
 
@@ -143,19 +142,18 @@ void game_render(Game_State *gs, float dt) {
     .scroll_speed = 0.5,
   };
   if (input_mkey_pressed(INPUT_MOUSE_RMB))sdata.item_count+=1;
-  gui_scroll_list_begin("scroll_list", GUI_AXIS_Y, &sdata);
+  gui_scroll_list_begin(MAKE_STR("scroll_list"), GUI_AXIS_Y, &sdata);
   for (s32 i = 0; i < sdata.item_count; i+=1) {
     gui_set_next_bg_color(col(i * 0.1, 0.2, 0.4, 0.5));
-    char name[64];
-    sprintf(name, "button_%i", i);
+    buf name = arena_sprintf(gs->frame_arena, "button##_%i", i); 
     gui_button(name);
   }
-  gui_scroll_list_end("scroll_list");
+  gui_scroll_list_end(MAKE_STR("scroll_list"));
 
-  Gui_Box *leftdd = gui_box_lookup_from_key(0, gui_key_from_str("panel_k1dd"));
+  Gui_Box *leftdd = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_k1dd")));
   assert(!gui_box_is_nil(leftdd));
   gui_set_next_parent(leftdd);
-  gui_multi_line_text("some id text", "Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn.");
+  gui_multi_line_text(MAKE_STR("some id text"), MAKE_STR("Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn."));
 
   gui_frame_end();
 

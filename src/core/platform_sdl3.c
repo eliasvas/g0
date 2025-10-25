@@ -6,8 +6,14 @@
 #include "base/base_inc.h"
 #include "input.h"
 
+#define STB_SPRINTF_IMPLEMENTATION
+#include <stb/stb_sprintf.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
+
+//#define STB_SPRINTF_IMPLEMENTATION
+//#include <stb/stb_sprintf.h>
 
 #include <GL/glew.h>
 #define OGL_IMPLEMENTATION

@@ -2,6 +2,7 @@
 #define _ARENA_H__
 #include "helper.h"
 #include <stdarg.h>
+#include <stb/stb_sprintf.h>
 
 #define ARENA_DEFAULT_CHUNK_SIZE KB(4)
 
@@ -70,6 +71,7 @@ static void arena_pop(Arena *arena, u64 bytes_to_pop) {
 
 
 // TODO: Maybe we should also mem_release if we crossed committed chunk boundaries
+#include "stdio.h"
 static void arena_clear(Arena *arena) {
   arena->current = sizeof(Arena);
   arena_align_forward(arena);
@@ -97,6 +99,24 @@ static Arena* arena_make_with_alignment(u64 size_in_bytes, u64 alignment) {
 
 static Arena* arena_make(u64 size_in_bytes) {
   return arena_make_with_alignment(size_in_bytes, 64);
+}
+
+static buf arena_sprintf(Arena *arena, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+
+  // shoudl we do +1 for null terminator.. is that ok? I think MSVC adds null terminator by default? @TEST
+  s32 size = vsnprintf(NULL, 0, format, args)+1;
+
+  // Also because of push_array_nz, the 'null' terminator is not nulled
+  char *mem = arena_push_array_nz(arena, u8, size);
+
+  va_end(args);
+  va_start(args, format);
+  vsnprintf(mem, size, format, args);
+  va_end(args);
+
+  return buf_make(mem, size-1);
 }
 
 #if 0

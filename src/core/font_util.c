@@ -96,11 +96,11 @@ Font_Info font_util_load_default_atlas(Arena *arena, u32 glyph_height_in_px, u32
   return font;
 }
 
-rect font_util_calc_text_rect(Font_Info *font_info, char *text, v2 baseline_pos, f32 scale) {
-  u32 glyph_count = str_len(text);
+rect font_util_calc_text_rect(Font_Info *font_info, buf text, v2 baseline_pos, f32 scale) {
+  u32 glyph_count = text.count;
   if (glyph_count == 0) return (rect){};
 
-  Glyph_Info first_glyph = font_info->glyphs[text[0] - font_info->first_codepoint];
+  Glyph_Info first_glyph = font_info->glyphs[text.data[0] - font_info->first_codepoint];
   rect r = (rect) {
     .x = first_glyph.off.x*scale +baseline_pos.x,
     .y = first_glyph.off.y*scale +baseline_pos.y,
@@ -109,7 +109,7 @@ rect font_util_calc_text_rect(Font_Info *font_info, char *text, v2 baseline_pos,
   };
 
   for (u32 glyph_idx = 0; glyph_idx < glyph_count; ++glyph_idx) {
-    Glyph_Info glyph = font_info->glyphs[text[glyph_idx] - font_info->first_codepoint];
+    Glyph_Info glyph = font_info->glyphs[text.data[glyph_idx] - font_info->first_codepoint];
     rect r1 = (rect) {
       .x = glyph.off.x*scale + baseline_pos.x,
       .y = glyph.off.y*scale + baseline_pos.y,
@@ -123,15 +123,15 @@ rect font_util_calc_text_rect(Font_Info *font_info, char *text, v2 baseline_pos,
   return r;
 }
 
-f32 font_util_measure_text_width(Font_Info *font_info, char *text, f32 scale) {
+f32 font_util_measure_text_width(Font_Info *font_info, buf text, f32 scale) {
   return font_util_calc_text_rect(font_info, text, v2m(0,0), scale).w;
 }
 
-f32 font_util_measure_text_height(Font_Info *font_info, char *text, f32 scale) {
+f32 font_util_measure_text_height(Font_Info *font_info, buf text, f32 scale) {
   return font_util_calc_text_rect(font_info, text, v2m(0,0), scale).h;
 }
 
-void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport, rect clip_rect, char *text, v2 baseline_pos, f32 scale, bool draw_box) {
+void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport, rect clip_rect, buf text, v2 baseline_pos, f32 scale, bool draw_box) {
   R2D* text_rend = r2d_begin(arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, viewport, clip_rect);
 
   rect tr = font_util_calc_text_rect(font_info, text, baseline_pos, scale);
@@ -142,8 +142,8 @@ void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport
     });
   }
 
-  for (u32 i = 0; i < str_len(text); ++i) {
-    u8 c = text[i];
+  for (u32 i = 0; i < text.count; ++i) {
+    u8 c = text.data[i];
     Glyph_Info metrics = font_info->glyphs[c - font_info->first_codepoint];
     r2d_push_quad(text_rend, (R2D_Quad) {
         .dst_rect = rec(baseline_pos.x+metrics.off.x*scale, baseline_pos.y+metrics.off.y*scale, metrics.r.w*scale, metrics.r.h*scale),

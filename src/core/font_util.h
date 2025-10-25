@@ -25,10 +25,10 @@ typedef struct {
 
 Font_Info font_util_load_default_atlas(Arena *arena, u32 glyph_height_in_px, u32 atlas_width, u32 atlas_height);
 
-rect font_util_calc_text_rect(Font_Info *font_info, char *text, v2 baseline_pos, f32 scale);
-f32 font_util_measure_text_width(Font_Info *font_info, char *text, f32 scale);
-f32 font_util_measure_text_height(Font_Info *font_info, char *text, f32 scale);
+rect font_util_calc_text_rect(Font_Info *font_info, buf text, v2 baseline_pos, f32 scale);
+f32 font_util_measure_text_width(Font_Info *font_info, buf text, f32 scale);
+f32 font_util_measure_text_height(Font_Info *font_info, buf text, f32 scale);
 
-void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport, rect clip_rect, char *text, v2 baseline_pos, f32 scale, bool draw_box);
+void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport, rect clip_rect, buf text, v2 baseline_pos, f32 scale, bool draw_box);
 
 #endif
