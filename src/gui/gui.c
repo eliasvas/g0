@@ -14,7 +14,7 @@ static Gui_Box g_nil_box = {
 
 void gui_context_init(Arena *temp_arena, Font_Info *font) {
   g_gui_ctx.font = font;
-  g_gui_ctx.font_scale = 0.3;
+  g_gui_ctx.font_scale = 0.5;
 
   g_gui_ctx.temp_arena = temp_arena;
   g_gui_ctx.persistent_arena = arena_make(MB(256));
@@ -99,10 +99,10 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 
   // If we find the box to have updated frame_idx, its a double creation of same idx..
   if(!box_first_time && box->last_used_frame_idx == gui_get_ctx()->frame_idx) {
+		printf("Key [%lu] has been detected twice, which means some box's hash to same ID!\n", key);
 		box = gui_box_nil_id();
 		key = gui_key_zero();
 		box_first_time = 1;
-		printf("Key [%lu] has been detected twice, which means some box's hash to same ID!\n", key);
 	}
 
   // If box was created this frame, allocate it, try to reuse Gui_Box's or allocate a new one
@@ -172,6 +172,7 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 		}
 
 		box->color = gui_top_bg_color();
+		box->text_color = gui_top_text_color();
 	}
 
 	gui_autopop_all_stacks();
@@ -560,7 +561,7 @@ void gui_draw_text_clip(rect r, v4 c, buf s, rect clip_rect) {
   v2 baseline = v2_sub(top_left, label_rect.p0);
 
   rect viewport = rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y);
-  font_util_debug_draw_text(gctx->font, gctx->temp_arena, viewport, clip_rect, s_without_doublehash, baseline, gctx->font_scale, false);
+  font_util_debug_draw_text(gctx->font, gctx->temp_arena, viewport, clip_rect, s_without_doublehash, baseline, gctx->font_scale, c, false);
 }
 
 
@@ -588,7 +589,7 @@ void gui_render_hierarchy(Gui_Box *box) {
       gui_draw_rect_clip(box->r, box->color, clip_rect);
 	}
 	if (box->flags & GB_FLAG_DRAW_TEXT) {
-    gui_draw_text_clip(box->r, box->color, box->s, clip_rect);
+    gui_draw_text_clip(box->r, box->text_color, box->s, clip_rect);
   }
 
 	// iterate through hierarchy
@@ -844,42 +845,35 @@ void gui_scroll_list_end(buf s) {
 
 // TODO: add scrolling
 // TODO: make this fast, rn its dog slow ok?
-// TODO: Ids should be unique somehow right? i mean label
-// TODO: Don't use chars, convert to bufs!
 Gui_Signal gui_multi_line_text(buf s, buf text) {
+  assert(s.count);
+  assert(text.count);
   gui_push_bg_color(col(0.2,0.2,0.2,1.0));
   // Scroll list should fit in parent space right?
   gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_child_layout_axis(GUI_AXIS_Y);
-  Gui_Box *text_container = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, s);
+  Gui_Box *text_container = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP|GB_FLAG_OVERFLOW_Y, s);
 
   gui_push_parent(text_container);
+
   f32 max_x = text_container->r.w;
+  buf mtext = text;
 
-  //char dirty_button_label[1024];
-  u32 start_idx = 0;
-  u32 end_idx = 0;
-  
-  while (max_x && text.count > end_idx) {
-    char *dirty_button_label = arena_push_array(gui_get_ctx()->temp_arena, char, 1024);
-
-    u32 text_w = font_util_measure_text_width(gui_get_ctx()->font, MAKE_STR(dirty_button_label), gui_get_ctx()->font_scale);
-    while (text_w < max_x && text.count > end_idx) {
-      dirty_button_label[end_idx-start_idx] = text.data[end_idx];
-      end_idx+=1;
-      text_w = font_util_measure_text_width(gui_get_ctx()->font, MAKE_STR(dirty_button_label), gui_get_ctx()->font_scale);
-    }
-    u32 text_h = font_util_measure_text_height(gui_get_ctx()->font, MAKE_STR(dirty_button_label), gui_get_ctx()->font_scale);
-
+  while (max_x && mtext.count) {
+    s64 glyphs_needed = font_util_count_glyphs_until_width(gui_get_ctx()->font, mtext, gui_get_ctx()->font_scale, max_x);
+    glyphs_needed = maximum(glyphs_needed, 1); // in case no glyphs fit
+    buf substr = buf_make(mtext.data, glyphs_needed);
+    u32 text_h = font_util_measure_text_height(gui_get_ctx()->font, substr, gui_get_ctx()->font_scale);
+                         
     gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
     gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, text_h, 0.0});
-    gui_label(MAKE_STR((char*)dirty_button_label));
+    gui_label(substr);
 
-    start_idx = end_idx;
+    mtext.count -= glyphs_needed;
+    mtext.data += glyphs_needed;
   }
   gui_pop_parent();
 
   return gui_get_signal_for_box(text_container);
 }
-

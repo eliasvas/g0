@@ -2,7 +2,7 @@
 #define _ARENA_H__
 #include "helper.h"
 #include <stdarg.h>
-#include <stb/stb_sprintf.h>
+//#include <stb/stb_sprintf.h>
 
 #define ARENA_DEFAULT_CHUNK_SIZE KB(4)
 
@@ -71,12 +71,12 @@ static void arena_pop(Arena *arena, u64 bytes_to_pop) {
 
 
 // TODO: Maybe we should also mem_release if we crossed committed chunk boundaries
-#include "stdio.h"
 static void arena_clear(Arena *arena) {
   arena->current = sizeof(Arena);
   arena_align_forward(arena);
 }
 
+#include "stdio.h"
 static Arena* arena_make_with_alignment(u64 size_in_bytes, u64 alignment) {
   u64 size_to_alloc = (size_in_bytes < ARENA_DEFAULT_CHUNK_SIZE) ? ARENA_DEFAULT_CHUNK_SIZE : size_in_bytes;
 

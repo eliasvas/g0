@@ -131,7 +131,7 @@ f32 font_util_measure_text_height(Font_Info *font_info, buf text, f32 scale) {
   return font_util_calc_text_rect(font_info, text, v2m(0,0), scale).h;
 }
 
-void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport, rect clip_rect, buf text, v2 baseline_pos, f32 scale, bool draw_box) {
+void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport, rect clip_rect, buf text, v2 baseline_pos, f32 scale, color col, bool draw_box) {
   R2D* text_rend = r2d_begin(arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, viewport, clip_rect);
 
   rect tr = font_util_calc_text_rect(font_info, text, baseline_pos, scale);
@@ -148,12 +148,26 @@ void font_util_debug_draw_text(Font_Info *font_info, Arena *arena, rect viewport
     r2d_push_quad(text_rend, (R2D_Quad) {
         .dst_rect = rec(baseline_pos.x+metrics.off.x*scale, baseline_pos.y+metrics.off.y*scale, metrics.r.w*scale, metrics.r.h*scale),
         .src_rect = rec(metrics.r.x, metrics.r.y, metrics.r.w, metrics.r.h),
-        .c = col(0.9,0.9,0.3,1),
+        .c = col,
         .tex = font_info->atlas,
     });
     baseline_pos.x += metrics.xadvance*scale;
   }
 
   r2d_end(text_rend);
+}
+
+s64 font_util_count_glyphs_until_width(Font_Info *font_info, buf text, f32 scale, f32 target_width) {
+  s64 glyph_count = 0;
+  while (glyph_count < text.count) {
+    f32 text_w = font_util_measure_text_width(font_info, buf_make(text.data, glyph_count), scale);
+    if (text_w >= target_width) {
+      if (glyph_count > 0) glyph_count -= 1;
+      break;
+    } else {
+      glyph_count+=1;
+    }
+  }
+  return glyph_count;
 }
 

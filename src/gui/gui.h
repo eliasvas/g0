@@ -77,6 +77,7 @@ struct Gui_Box {
   f32 transparency;
   u64 last_used_frame_idx;
   v4 color;
+  v4 text_color;
   //v4 roundness;
 
   f32 hot_t;

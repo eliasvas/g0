@@ -119,7 +119,6 @@ static s64 rend_tex_array_try_add(R2D_Tex_Array *tarray, Ogl_Tex tex) {
 static void rend_tex_array_clear(R2D_Tex_Array *tarray) {
   M_ZERO(tarray->textures, sizeof(Ogl_Tex) * tarray->cap);
   tarray->count = 0;
-  tarray->cap = 0;
 }
 
 // Maybe the R2D_Quad should be passed by pointer, it might be YUGE!
@@ -127,7 +126,7 @@ static void rend_quad_chunk_list_push(Arena *arena, R2D_Quad_Chunk_List* list, u
   R2D_Quad_Chunk_Node *node = list->first;
   if (node == nullptr || node->count >= node->cap) {
     node = arena_push_struct(arena, R2D_Quad_Chunk_Node);
-    node->arr = arena_push_array(arena, R2D_Quad_Chunk_Node, cap);
+    node->arr = arena_push_array(arena, R2D_Quad, cap);
     node->cap = cap;
     sll_queue_push(list->first, list->last, node);
     list->node_count+=1;
@@ -217,7 +216,7 @@ R2D* r2d_begin(Arena *arena, R2D_Cam *cam, rect viewport, rect scissor) {
   // initialize the tex array
   rend->tex_array.count = 0;
   rend->tex_array.cap = REND_MAX_TEXTURES;
-  rend->tex_array.textures = arena_push_array(arena, R2D_Tex_Array, rend->tex_array.cap);
+  rend->tex_array.textures = arena_push_array(arena, Ogl_Tex, rend->tex_array.cap);
 
   return rend;
 }
@@ -230,7 +229,6 @@ void r2d_end(R2D *rend) {
   Batch_Vertex *batch_vertices = arena_push_array(rend->arena, Batch_Vertex,REND_MAX_INSTANCES);
 
   u64 vertex_idx  = 0;
-
   for (u64 quad_idx = 0; quad_idx < quads.count; ++quad_idx) {
     R2D_Quad *q = &quads.arr[quad_idx];
 
