@@ -287,11 +287,11 @@ static rect rect_fit_inside(rect src, rect dest, Rect_Fit_Mode mode) {
   switch(mode) {
     case RECT_FIT_MODE_LEFT: {
       v2 lp = v2m(dest.x, dest.y + dest.h/2.0);
-      p = lp;
+      p = v2_sub(lp, v2m(0, src.h/2.0));
     }break;
     case RECT_FIT_MODE_RIGHT: {
       v2 rp = v2m(dest.x + dest.w, dest.y + dest.h/2.0);
-      p = v2_sub(rp, v2m(src.w, 0));
+      p = v2_sub(rp, v2m(src.w, src.h/2.0));
     }break;
     case RECT_FIT_MODE_CENTER: {
       v2 mp = v2m(dest.x + dest.w/2.0, dest.y + dest.h/2.0);

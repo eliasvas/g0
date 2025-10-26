@@ -35,21 +35,21 @@ void game_init(Game_State *gs) {
 
   Gui_Panel *c1u = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
   c1u->label = MAKE_STR("c1u");
-  c1u->parent_pct = 0.2;
+  c1u->parent_pct = 0.1;
   c1u->split_axis = GUI_AXIS_Y;
   dll_push_back(c1->first, c1->last, c1u);
   c1u->parent = c1;
 
   Gui_Panel *c1d = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
   c1d->label = MAKE_STR("c1d");
-  c1d->parent_pct = 0.5;
+  c1d->parent_pct = 0.4;
   c1d->split_axis = GUI_AXIS_Y;
   dll_push_back(c1->first, c1->last, c1d);
   c1d->parent = c1;
 
   Gui_Panel *k1dd = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
   k1dd->label = MAKE_STR("k1dd");
-  k1dd->parent_pct = 0.3;
+  k1dd->parent_pct = 0.5;
   k1dd->split_axis = GUI_AXIS_Y;
   dll_push_back(c1->first, c1->last, k1dd);
   k1dd->parent = c1;
@@ -104,37 +104,43 @@ void game_render(Game_State *gs, float dt) {
   ogl_clear(col(0.0,0.0,0.0,1.0));
   gui_frame_begin(gs->screen_dim, dt);
 
-  Gui_Box *leftup = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_c1u")));
-  assert(!gui_box_is_nil(leftup));
-  gui_push_parent(leftup);
-  buf fps_name = arena_sprintf(gs->frame_arena, "fps: %f", 1.0/dt); 
-  gui_set_next_text_color(col(0.9,0.9,0.3,1.0));
-  gui_set_next_bg_color(v4m(0.4,0.3,0.2,1));
-  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_label(fps_name);
+  gui_push_font_scale(0.25);
+  gui_push_text_alignment(GUI_TEXT_ALIGNMENT_LEFT);
+  {
+    Gui_Box *leftup = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_c1u")));
+    assert(!gui_box_is_nil(leftup));
+    gui_push_parent(leftup);
+    buf fps_name = arena_sprintf(gs->frame_arena, "fps: %f", 1.0/dt); 
+    gui_set_next_text_color(col(0.9,0.9,0.3,1.0));
+    gui_set_next_bg_color(v4m(0.4,0.3,0.2,1));
+    gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_label(fps_name);
 
-  v2 mp = input_get_mouse_pos();
-  buf mp_name = arena_sprintf(gs->frame_arena, "mp: (%.0f,%.0f)", mp.x, mp.y); 
-  gui_set_next_text_color(col(0.7,0.7,0.7,1.0));
-  gui_set_next_bg_color(v4m(0.4,0.2,0.3,1));
-  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_label(mp_name);
+    v2 mp = input_get_mouse_pos();
+    buf mp_name = arena_sprintf(gs->frame_arena, "mp: (%.0f,%.0f)", mp.x, mp.y); 
+    gui_set_next_text_color(col(0.7,0.7,0.7,1.0));
+    gui_set_next_bg_color(v4m(0.4,0.2,0.3,1));
+    gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_label(mp_name);
 
-  buf pers_name = arena_sprintf(gs->frame_arena, "allocd: %lu KB", gs->persistent_arena->committed/KB(1)); 
-  gui_set_next_text_color(col(0.9,0.4,0.8,1.0));
-  gui_set_next_bg_color(v4m(0.2,0.3,0.4,1));
-  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_label(pers_name);
+    buf pers_name = arena_sprintf(gs->frame_arena, "allocd: %lu KB", gs->persistent_arena->committed/KB(1)); 
+    gui_set_next_text_color(col(0.9,0.4,0.8,1.0));
+    gui_set_next_bg_color(v4m(0.2,0.3,0.4,1));
+    gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_label(pers_name);
 
-  buf tpers_name = arena_sprintf(gs->frame_arena, "tallocd: %lu KB", gs->frame_arena->committed/KB(1)); 
-  gui_set_next_text_color(col(1.0,0.3,1.0,1.0));
-  gui_set_next_bg_color(v4m(0.2,0.3,0.4,1));
-  gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
-  gui_label(tpers_name);
+    buf tpers_name = arena_sprintf(gs->frame_arena, "tallocd: %lu KB", gs->frame_arena->committed/KB(1)); 
+    gui_set_next_text_color(col(1.0,0.3,1.0,1.0));
+    gui_set_next_bg_color(v4m(0.2,0.2,0.4,1));
+    gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_label(tpers_name);
+  }
+  gui_pop_text_alignment();
+  gui_pop_font_scale();
 
   gui_pop_parent();
 
@@ -144,7 +150,7 @@ void game_render(Game_State *gs, float dt) {
 
   static Gui_Scroll_Data sdata = {
     .scroll_percent = 0.0,
-    .item_px = 100,
+    .item_px = 30,
     .item_count = 4,
     .scroll_bar_px = 20,
     .scroll_button_px = 40,
@@ -152,6 +158,7 @@ void game_render(Game_State *gs, float dt) {
     .scroll_speed = 0.5,
   };
   if (input_mkey_pressed(INPUT_MOUSE_RMB))sdata.item_count+=1;
+  gui_push_font_scale(0.4);
   gui_scroll_list_begin(MAKE_STR("scroll_list"), GUI_AXIS_Y, &sdata);
   for (s32 i = 0; i < sdata.item_count; i+=1) {
     gui_set_next_bg_color(col(i * 0.1, 0.2, 0.4, 0.5));
@@ -159,13 +166,22 @@ void game_render(Game_State *gs, float dt) {
     gui_button(name);
   }
   gui_scroll_list_end(MAKE_STR("scroll_list"));
+  gui_pop_font_scale();
 
   Gui_Box *leftdd = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_k1dd")));
   assert(!gui_box_is_nil(leftdd));
   gui_set_next_parent(leftdd);
-  gui_push_text_color(col(0.9,0.9,0.3,1.0));
-  gui_multi_line_text(MAKE_STR("some id text"), MAKE_STR("this is some random thext to just test out the multiline text functionality of this particular gui_multi_line thingy"));  
-  gui_pop_text_color();
+
+  static char *text1="this is some random text to just test out the multiline text functionality, press next";
+  static char *text2="You can press prev to go back? Not sure about that";
+  static char *selected_text = "";
+  if (!cstr_len(selected_text))selected_text = text1;
+
+  Gui_Dialog_State ds = gui_dialog(MAKE_STR("dialog1"), MAKE_STR("Alex"), MAKE_STR(selected_text));  
+  if (ds == GUI_DIALOG_STATE_PREV_PRESSED)selected_text = text1;
+  if (ds == GUI_DIALOG_STATE_NEXT_PRESSED)selected_text = text2;
+
+
   gui_frame_end();
 
 #define ATLAS_SPRITES_X 16

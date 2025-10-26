@@ -14,6 +14,12 @@ static Gui_Axis gui_axis_flip(Gui_Axis axis) {
 }
 
 typedef enum {
+  GUI_TEXT_ALIGNMENT_LEFT,
+  GUI_TEXT_ALIGNMENT_RIGHT,
+  GUI_TEXT_ALIGNMENT_CENTER,
+} Gui_Text_Alignment;
+
+typedef enum {
   GUI_SIZE_KIND_NULL,
   GUI_SIZE_KIND_PIXELS,
   GUI_SIZE_KIND_TEXT_CONTENT,
@@ -77,7 +83,10 @@ struct Gui_Box {
   f32 transparency;
   u64 last_used_frame_idx;
   v4 color;
+
   v4 text_color;
+  Gui_Text_Alignment text_alignment;
+  f32 font_scale;
   //v4 roundness;
 
   f32 hot_t;
@@ -119,6 +128,8 @@ typedef struct Gui_Fixed_Width_Node Gui_Fixed_Width_Node; struct Gui_Fixed_Width
 typedef struct Gui_Fixed_Height_Node Gui_Fixed_Height_Node; struct Gui_Fixed_Height_Node {Gui_Fixed_Height_Node *next; f32 v;};
 typedef struct Gui_Bg_Color_Node Gui_Bg_Color_Node; struct Gui_Bg_Color_Node {Gui_Bg_Color_Node *next; v4 v;};
 typedef struct Gui_Text_Color_Node Gui_Text_Color_Node; struct Gui_Text_Color_Node {Gui_Text_Color_Node *next; v4 v;};
+typedef struct Gui_Text_Alignment_Node Gui_Text_Alignment_Node; struct Gui_Text_Alignment_Node {Gui_Text_Alignment_Node *next; Gui_Text_Alignment v;};
+typedef struct Gui_Font_Scale_Node Gui_Font_Scale_Node; struct Gui_Font_Scale_Node {Gui_Font_Scale_Node *next; f32 v;};
 typedef struct Gui_Child_Layout_Axis_Node Gui_Child_Layout_Axis_Node; struct Gui_Child_Layout_Axis_Node {Gui_Child_Layout_Axis_Node *next; Gui_Axis v;};
 typedef struct Gui_Panel_Itr_Node Gui_Panel_Itr_Node; struct Gui_Panel_Itr_Node{Gui_Panel_Itr_Node *next; Gui_Panel_Itr v; };
 
@@ -152,7 +163,6 @@ typedef struct {
 
   v2 screen_dim;
   f64 dt;
-  float font_scale;
 
   Gui_Key hot_box_key;
   Gui_Key active_box_keys[INPUT_MOUSE_COUNT];
@@ -188,6 +198,10 @@ typedef struct {
 	struct { Gui_Bg_Color_Node *top; v4 bottom_val; Gui_Bg_Color_Node *free; b32 auto_pop; } bg_color_stack;
 	Gui_Text_Color_Node text_color_nil_stack_top;
 	struct { Gui_Text_Color_Node *top; v4 bottom_val; Gui_Text_Color_Node *free; b32 auto_pop; } text_color_stack;
+	Gui_Font_Scale_Node font_scale_nil_stack_top;
+	struct { Gui_Font_Scale_Node *top; f32 bottom_val; Gui_Font_Scale_Node *free; b32 auto_pop; } font_scale_stack;
+	Gui_Text_Alignment_Node text_alignment_nil_stack_top;
+	struct { Gui_Text_Alignment_Node *top; Gui_Text_Alignment bottom_val; Gui_Text_Alignment_Node *free; b32 auto_pop; } text_alignment_stack;
 	Gui_Child_Layout_Axis_Node child_layout_axis_nil_stack_top;
 	struct { Gui_Child_Layout_Axis_Node *top; Gui_Axis bottom_val; Gui_Child_Layout_Axis_Node *free; b32 auto_pop; } child_layout_axis_stack;
   Gui_Panel_Itr_Node panel_itr_nil_stack_top;
@@ -263,6 +277,17 @@ v4 gui_set_next_text_color(v4 v);
 v4 gui_push_text_color(v4 v);
 v4 gui_pop_text_color(void);
 
+f32 gui_top_font_scale(void);
+f32 gui_set_next_font_scale(f32 v);
+f32 gui_push_font_scale(f32 v);
+f32 gui_pop_font_scale(void);
+
+Gui_Text_Alignment gui_top_text_alignment(void);
+Gui_Text_Alignment gui_set_next_text_alignment(Gui_Text_Alignment v);
+Gui_Text_Alignment gui_push_text_alignment(Gui_Text_Alignment v);
+Gui_Text_Alignment gui_pop_text_alignment(void);
+
+
 void gui_layout_root(Gui_Box *root, Gui_Axis axis);
 Gui_Axis gui_top_child_layout_axis(void);
 Gui_Axis gui_set_next_child_layout_axis(Gui_Axis v);
@@ -306,5 +331,12 @@ Gui_Signal gui_scroll_list_begin(buf s, Gui_Axis axis, Gui_Scroll_Data* sdata);
 void gui_scroll_list_end(buf s);
 
 Gui_Signal gui_multi_line_text(buf s, buf text);
+
+typedef enum {
+  GUI_DIALOG_STATE_NOTHING_HAPPENED = 0,
+  GUI_DIALOG_STATE_NEXT_PRESSED = 1,
+  GUI_DIALOG_STATE_PREV_PRESSED = 2,
+}Gui_Dialog_State;
+Gui_Dialog_State gui_dialog(buf id, buf person_name, buf prompt);
 
 #endif

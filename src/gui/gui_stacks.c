@@ -103,6 +103,18 @@ void gui_init_stacks() {
 	state->text_color_stack.bottom_val = state->text_color_nil_stack_top.v;
 	state->text_color_stack.free = 0;
 	state->text_color_stack.auto_pop = 0;
+	// -- text_alignment stack initialization
+	state->text_alignment_nil_stack_top.v = GUI_TEXT_ALIGNMENT_CENTER;
+	state->text_alignment_stack.top = &state->text_alignment_nil_stack_top;
+	state->text_alignment_stack.bottom_val = state->text_alignment_nil_stack_top.v;
+	state->text_alignment_stack.free = 0;
+	state->text_alignment_stack.auto_pop = 0;
+	// -- font_scale stack initialization
+	state->font_scale_nil_stack_top.v = 0.5;
+	state->font_scale_stack.top = &state->font_scale_nil_stack_top;
+	state->font_scale_stack.bottom_val = state->font_scale_nil_stack_top.v;
+	state->font_scale_stack.free = 0;
+	state->font_scale_stack.auto_pop = 0;
 	// -- child_layout_axis stack initialization
 	state->child_layout_axis_nil_stack_top.v = GUI_AXIS_X;
 	state->child_layout_axis_stack.top = &state->child_layout_axis_nil_stack_top;
@@ -130,6 +142,8 @@ void gui_autopop_all_stacks() {
 	if (state->pref_height_stack.auto_pop) { gui_pop_pref_height();state->pref_height_stack.auto_pop = 0; }
 	if (state->bg_color_stack.auto_pop) { gui_pop_bg_color();state->bg_color_stack.auto_pop = 0; }
 	if (state->text_color_stack.auto_pop) { gui_pop_text_color();state->text_color_stack.auto_pop = 0; }
+	if (state->text_alignment_stack.auto_pop) { gui_pop_text_alignment();state->text_alignment_stack.auto_pop = 0; }
+	if (state->font_scale_stack.auto_pop) { gui_pop_font_scale();state->font_scale_stack.auto_pop = 0; }
 	if (state->child_layout_axis_stack.auto_pop) { gui_pop_child_layout_axis();state->child_layout_axis_stack.auto_pop = 0; }
 	if (state->panel_itr_stack.auto_pop) { gui_pop_panel_itr();state->panel_itr_stack.auto_pop = 0; }
 }
@@ -178,6 +192,16 @@ v4 gui_top_text_color(void) { gui_stack_top_impl(gui_get_ctx(), Text_Color, text
 v4 gui_set_next_text_color(v4 v) { gui_stack_set_next_impl(gui_get_ctx(), Text_Color, text_color, v4, v); }
 v4 gui_push_text_color(v4 v) { gui_stack_push_impl(gui_get_ctx(), Text_Color, text_color, v4, v); }
 v4 gui_pop_text_color(void) { gui_stack_pop_impl(gui_get_ctx(), Text_Color, text_color); }
+
+f32 gui_top_font_scale(void) { gui_stack_top_impl(gui_get_ctx(), Font_Scale, font_scale); }
+f32 gui_set_next_font_scale(f32 v) { gui_stack_set_next_impl(gui_get_ctx(), Font_Scale, font_scale, f32, v); }
+f32 gui_push_font_scale(f32 v) { gui_stack_push_impl(gui_get_ctx(), Font_Scale, font_scale, f32, v); }
+f32 gui_pop_font_scale(void) { gui_stack_pop_impl(gui_get_ctx(), Font_Scale, font_scale); }
+
+Gui_Text_Alignment gui_top_text_alignment(void) { gui_stack_top_impl(gui_get_ctx(), Text_Alignment, text_alignment); }
+Gui_Text_Alignment gui_set_next_text_alignment(Gui_Text_Alignment v) { gui_stack_set_next_impl(gui_get_ctx(), Text_Alignment, text_alignment, Gui_Text_Alignment, v); }
+Gui_Text_Alignment gui_push_text_alignment(Gui_Text_Alignment v) { gui_stack_push_impl(gui_get_ctx(), Text_Alignment, text_alignment, Gui_Text_Alignment, v); }
+Gui_Text_Alignment gui_pop_text_alignment(void) { gui_stack_pop_impl(gui_get_ctx(), Text_Alignment, text_alignment); }
 
 Gui_Axis gui_top_child_layout_axis(void) { gui_stack_top_impl(gui_get_ctx(), Child_Layout_Axis, child_layout_axis); }
 Gui_Axis gui_set_next_child_layout_axis(Gui_Axis v) { gui_stack_set_next_impl(gui_get_ctx(), Child_Layout_Axis, child_layout_axis, Gui_Axis, v); }

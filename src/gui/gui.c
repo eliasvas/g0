@@ -14,7 +14,6 @@ static Gui_Box g_nil_box = {
 
 void gui_context_init(Arena *temp_arena, Font_Info *font) {
   g_gui_ctx.font = font;
-  g_gui_ctx.font_scale = 0.5;
 
   g_gui_ctx.temp_arena = temp_arena;
   g_gui_ctx.persistent_arena = arena_make(MB(256));
@@ -173,6 +172,8 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 
 		box->color = gui_top_bg_color();
 		box->text_color = gui_top_text_color();
+		box->text_alignment = gui_top_text_alignment();
+		box->font_scale = gui_top_font_scale();
 	}
 
 	gui_autopop_all_stacks();
@@ -386,9 +387,9 @@ void gui_layout_calc_constant_sizes(Gui_Box *root, Gui_Axis axis) {
       f32 text_size = 0;
       // TODO: make a font_util_measure_text_dim? :)
       if (axis == GUI_AXIS_X) {
-        text_size = font_util_measure_text_width(state->font, root->s, state->font_scale);
+        text_size = font_util_measure_text_width(state->font, root->s, root->font_scale);
       } else {
-        text_size = font_util_measure_text_height(state->font, root->s, state->font_scale);
+        text_size = font_util_measure_text_height(state->font, root->s, root->font_scale);
       }
       root->fixed_size.raw[axis] = padding + text_size;
   }
@@ -551,17 +552,17 @@ void gui_draw_rect_clip(rect r, v4 c, rect clip_rect) {
   r2d_end(r_rend);
 }
 
-void gui_draw_text_clip(rect r, v4 c, buf s, rect clip_rect) {
+void gui_draw_text_clip(rect r, v4 c, f32 font_scale, Gui_Text_Alignment text_alignment, buf s, rect clip_rect) {
   Gui_Context *gctx = gui_get_ctx();
   buf s_without_doublehash = buf_lcut(s, MAKE_STR("##"));
 
-  rect label_rect = font_util_calc_text_rect(g_gui_ctx.font, s_without_doublehash, v2m(0,0), gctx->font_scale);
-  rect fitted_rect = rect_fit_inside(label_rect, r, RECT_FIT_MODE_CENTER);
+  rect label_rect = font_util_calc_text_rect(g_gui_ctx.font, s_without_doublehash, v2m(0,0), font_scale);
+  rect fitted_rect = rect_fit_inside(label_rect, r, (Rect_Fit_Mode)text_alignment);
   v2 top_left = v2m(fitted_rect.x, fitted_rect.y);
   v2 baseline = v2_sub(top_left, label_rect.p0);
 
   rect viewport = rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y);
-  font_util_debug_draw_text(gctx->font, gctx->temp_arena, viewport, clip_rect, s_without_doublehash, baseline, gctx->font_scale, c, false);
+  font_util_debug_draw_text(gctx->font, gctx->temp_arena, viewport, clip_rect, s_without_doublehash, baseline, font_scale, c, false);
 }
 
 
@@ -589,7 +590,7 @@ void gui_render_hierarchy(Gui_Box *box) {
       gui_draw_rect_clip(box->r, box->color, clip_rect);
 	}
 	if (box->flags & GB_FLAG_DRAW_TEXT) {
-    gui_draw_text_clip(box->r, box->text_color, box->s, clip_rect);
+    gui_draw_text_clip(box->r, box->text_color, box->font_scale, box->text_alignment, box->s, clip_rect);
   }
 
 	// iterate through hierarchy
@@ -861,10 +862,10 @@ Gui_Signal gui_multi_line_text(buf s, buf text) {
   buf mtext = text;
 
   while (max_x && mtext.count) {
-    s64 glyphs_needed = font_util_count_glyphs_until_width(gui_get_ctx()->font, mtext, gui_get_ctx()->font_scale, max_x);
+    s64 glyphs_needed = font_util_count_glyphs_until_width(gui_get_ctx()->font, mtext, gui_top_font_scale(), max_x);
     glyphs_needed = maximum(glyphs_needed, 1); // in case no glyphs fit
     buf substr = buf_make(mtext.data, glyphs_needed);
-    u32 text_h = font_util_measure_text_height(gui_get_ctx()->font, substr, gui_get_ctx()->font_scale);
+    u32 text_h = font_util_measure_text_height(gui_get_ctx()->font, substr, gui_top_font_scale());
                          
     gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
     gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, text_h, 0.0});
@@ -877,3 +878,56 @@ Gui_Signal gui_multi_line_text(buf s, buf text) {
 
   return gui_get_signal_for_box(text_container);
 }
+
+Gui_Dialog_State gui_dialog(buf id, buf person_name, buf prompt) {
+  Gui_Dialog_State ds = {};
+  gui_push_bg_color(col(0.2,0.2,0.2,1.0));
+
+  gui_push_text_alignment(GUI_TEXT_ALIGNMENT_LEFT);
+  gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_child_layout_axis(GUI_AXIS_Y);
+  Gui_Box *dialog_container = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, id);
+
+  gui_push_parent(dialog_container);
+
+  gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 10.0, 0.0});
+  gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_text_color(col(0.3,0.9,0.9, 1.0));
+  gui_label(arena_sprintf(gui_get_ctx()->temp_arena, "%.*s:##%.*s", (int)person_name.count, person_name.data, (int)id.count, id.data));
+
+  gui_push_text_color(col(0.9,0.9,0.3,1.0));
+  gui_multi_line_text(arena_sprintf(gui_get_ctx()->temp_arena, "%.*s__dialog", (int)id.count, id.data), prompt);
+  gui_pop_text_color();
+
+  gui_pop_text_alignment();
+
+  gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_CHILDREN_SUM, 0.0, 0.0});
+  gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  Gui_Box *buttons_container = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, arena_sprintf(gui_get_ctx()->temp_arena, "%.*s__buttons", (int)id.count, id.data));
+  gui_push_parent(buttons_container);
+  {
+    gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 0.0});
+    gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 0.0});
+    gui_set_next_bg_color(col(0.7,0.5,0.4, 1.0));
+    gui_set_next_text_color(col(0.9,0.9,0.3, 0.8));
+    Gui_Signal s = gui_button(arena_sprintf(gui_get_ctx()->temp_arena, "Next##__next_button%.*s", (int)id.count, id.data));
+    if (s.flags & GUI_SIGNAL_FLAG_LMB_PRESSED)ds = GUI_DIALOG_STATE_NEXT_PRESSED;
+
+    gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1, 0.0});
+
+    gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 0.0});
+    gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 0.0});
+    gui_set_next_bg_color(col(0.5,0.3,0.5, 1.0));
+    gui_set_next_text_color(col(0.9,0.9,0.3, 0.8));
+    s = gui_button(arena_sprintf(gui_get_ctx()->temp_arena, "Prev##__prev_button%.*s", (int)id.count, id.data));
+    if (s.flags & GUI_SIGNAL_FLAG_LMB_PRESSED)ds = GUI_DIALOG_STATE_PREV_PRESSED;
+  }
+  gui_pop_parent();
+
+  gui_pop_parent();
+  gui_pop_bg_color();
+  return ds;
+}
+
+
