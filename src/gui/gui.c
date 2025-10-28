@@ -23,7 +23,7 @@ void gui_context_init(Arena *temp_arena, Font_Info *font) {
 
   g_gui_ctx.root_panel = arena_push_array(g_gui_ctx.persistent_arena, Gui_Panel, 1);
   g_gui_ctx.root_panel->parent_pct = 1.0;
-  g_gui_ctx.root_panel->split_axis = GUI_AXIS_X;
+  g_gui_ctx.root_panel->split_axis = GUI_AXIS_Y;
   g_gui_ctx.root_panel->label = MAKE_STR("root_panel");
 }
 
@@ -580,7 +580,10 @@ void gui_render_hierarchy(Gui_Box *box) {
   if (box->flags & (GB_FLAG_CLICKABLE|GB_FLAG_VIEW_SCROLL_X|GB_FLAG_VIEW_SCROLL_Y)) {
     for (Gui_Box *parent = box->parent; !gui_box_is_nil(parent); parent = parent->parent) {
       if (parent->flags & GB_FLAG_CLIP) {
-        clip_rect = parent->r;
+        clip_rect = ogl_to_gl_rect(parent->r, gctx->screen_dim.y);
+
+    //gs->game_viewport = rec(r.x, gs->screen_dim.y - r.y - r.h, r.w, r.h);
+
         break;
       } 
     }

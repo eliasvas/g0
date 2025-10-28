@@ -25,46 +25,34 @@ void game_init(Game_State *gs) {
   // Gui Stuff
   gui_context_init(gs->frame_arena, &gs->font);
   // DUMMY gui panel hierarchy for testing
-  Gui_Panel *c1 = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
-  c1->label = MAKE_STR("c1");
-  c1->parent_pct = 0.4;
-  c1->split_axis = GUI_AXIS_Y;
-  dll_push_back(gui_get_ctx()->root_panel->first, gui_get_ctx()->root_panel->last, c1);
-  c1->parent = gui_get_ctx()->root_panel;
-  assert(c1->parent == gui_get_ctx()->root_panel);
-
-  Gui_Panel *c1u = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
-  c1u->label = MAKE_STR("c1u");
-  c1u->parent_pct = 0.1;
-  c1u->split_axis = GUI_AXIS_Y;
-  dll_push_back(c1->first, c1->last, c1u);
-  c1u->parent = c1;
-
-  Gui_Panel *c1d = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
-  c1d->label = MAKE_STR("c1d");
-  c1d->parent_pct = 0.4;
-  c1d->split_axis = GUI_AXIS_Y;
-  dll_push_back(c1->first, c1->last, c1d);
-  c1d->parent = c1;
-
-  Gui_Panel *k1dd = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
-  k1dd->label = MAKE_STR("k1dd");
-  k1dd->parent_pct = 0.5;
-  k1dd->split_axis = GUI_AXIS_Y;
-  dll_push_back(c1->first, c1->last, k1dd);
-  k1dd->parent = c1;
+  Gui_Panel *p_up = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
+  p_up->label = MAKE_STR("p_up");
+  p_up->parent_pct = 0.8;
+  p_up->split_axis = GUI_AXIS_X;
+  dll_push_back(gui_get_ctx()->root_panel->first, gui_get_ctx()->root_panel->last, p_up);
+  p_up->parent = gui_get_ctx()->root_panel;
 
 
+  Gui_Panel *p_down = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
+  p_down->label = MAKE_STR("p_down");
+  p_down->parent_pct = 0.2;
+  p_down->split_axis = GUI_AXIS_Y;
+  dll_push_back(gui_get_ctx()->root_panel->first, gui_get_ctx()->root_panel->last, p_down);
+  p_down->parent = gui_get_ctx()->root_panel;
 
-  Gui_Panel *c2 = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
-  c2->label = MAKE_STR("c2");
-  c2->parent_pct = 0.6;
-  c2->split_axis = GUI_AXIS_X;
-  dll_push_back(gui_get_ctx()->root_panel->first, gui_get_ctx()->root_panel->last, c2);
-  c2->parent = gui_get_ctx()->root_panel;
-  assert(c1->next == c2);
-  assert(c1->parent == gui_get_ctx()->root_panel);
-  assert(c2->parent == gui_get_ctx()->root_panel);
+  Gui_Panel *p_up_left = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
+  p_up_left->label = MAKE_STR("p_up_left");
+  p_up_left->parent_pct = 0.2;
+  p_up_left->split_axis = GUI_AXIS_Y;
+  dll_push_back(p_up->first, p_up->last, p_up_left);
+  p_up_left->parent = p_up;
+
+  Gui_Panel *p_up_right = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
+  p_up_right->label = MAKE_STR("p_up_right");
+  p_up_right->parent_pct = 0.8;
+  p_up_right->split_axis = GUI_AXIS_Y;
+  dll_push_back(p_up->first, p_up->last, p_up_right);
+  p_up_right->parent = p_up;
   // ---------------------------------
 
   // Json library testing
@@ -94,9 +82,10 @@ void game_init(Game_State *gs) {
 }
 
 void game_update(Game_State *gs, float dt) {
-  Gui_Box *right = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_c2")));
-  if (!gui_box_is_nil(right)) {
-    gs->game_viewport = right->r; 
+  Gui_Box *up_right = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_p_up_right")));
+  if (!gui_box_is_nil(up_right)) {
+    rect r = up_right->r; 
+    gs->game_viewport = ogl_to_gl_rect(r, gs->screen_dim.y);
   }
 }
 
@@ -104,6 +93,7 @@ void game_render(Game_State *gs, float dt) {
   ogl_clear(col(0.0,0.0,0.0,1.0));
   gui_frame_begin(gs->screen_dim, dt);
 
+  /*
   gui_push_font_scale(0.25);
   gui_push_text_alignment(GUI_TEXT_ALIGNMENT_LEFT);
   {
@@ -138,15 +128,18 @@ void game_render(Game_State *gs, float dt) {
     gui_set_next_pref_size(GUI_AXIS_X, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
     gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
     gui_label(tpers_name);
+
+    gui_pop_parent();
   }
   gui_pop_text_alignment();
   gui_pop_font_scale();
+  */
 
-  gui_pop_parent();
 
-  Gui_Box *leftdown = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_c1d")));
-  assert(!gui_box_is_nil(leftdown));
-  gui_set_next_parent(leftdown);
+  // Label List on up-left tile of screen
+  Gui_Box *up_left = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_p_up_left")));
+  assert(!gui_box_is_nil(up_left));
+  gui_set_next_parent(up_left);
 
   static Gui_Scroll_Data sdata = {
     .scroll_percent = 0.0,
@@ -168,9 +161,11 @@ void game_render(Game_State *gs, float dt) {
   gui_scroll_list_end(MAKE_STR("scroll_list"));
   gui_pop_font_scale();
 
-  Gui_Box *leftdd = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_k1dd")));
-  assert(!gui_box_is_nil(leftdd));
-  gui_set_next_parent(leftdd);
+
+  // Dialog box on down tile of screen
+  Gui_Box *down = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_p_down")));
+  assert(!gui_box_is_nil(down));
+  gui_set_next_parent(down);
 
   static char *text1="this is some random text to just test out the multiline text functionality, press next";
   static char *text2="You can press prev to go back? Not sure about that";

@@ -6,6 +6,7 @@
 
 // TODO: Make an API to begin..end drawing, for when we want to draw many stuff with same render bundle state
 // TODO: Maybe we should have views to buffers instead of actual ones right?
+// TODO: viewport and scissor are still OpenGL style, to fix we need to somehow know the screen_dim right?
 
 // https://www.3dgep.com/forward-plus/
 
@@ -198,6 +199,8 @@ typedef struct {
   extern Ogl_Render_Target ogl_render_target_make(u32 w, u32 h, u32 attachment_count, Ogl_Tex_Format format, bool add_depth);
   extern void ogl_render_target_deinit(Ogl_Render_Target *rt);
 
+  // TODO: remove this!
+  extern rect ogl_to_gl_rect(rect r, f32 screen_height);
 #else
 
 // This is complete bullshit, WHY do I need to make a vao at startup on MODERN opengl??????
@@ -275,6 +278,11 @@ void ogl_buf_deinit(Ogl_Buf *buf) {
   if (buf && buf->impl_state) {
     glDeleteBuffers(1, &buf->impl_state);
   }
+}
+
+// Used for viewports/scissors currently, TODO: remove this..
+rect ogl_to_gl_rect(rect r, f32 screen_height) {
+  return rec(r.x, screen_height - r.y - r.h, r.w, r.h);
 }
 
 static uint32_t ogl_data_get_count(Ogl_Data_Type type) {
@@ -616,8 +624,7 @@ static void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
   if (bundle->dyn_state.flags & OGL_DYN_STATE_FLAG_SCISSOR) {
     glEnable(GL_SCISSOR_TEST);
     rect scissor = bundle->dyn_state.scissor;
-    glScissor(scissor.x, viewport.h - scissor.y - scissor.h, scissor.w, scissor.h);
-    //glScissor(viewport.x, viewport.y, viewport.w, viewport.h);
+    glScissor(scissor.x, scissor.y, scissor.w, scissor.h);
   } else {
     glDisable(GL_SCISSOR_TEST);
   }

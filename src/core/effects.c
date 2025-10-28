@@ -104,11 +104,11 @@ Effect effect_make(Effect_Kind kind) {
 }
 
 void effect_render(Effect *effect, Effect_Data *data, v2 screen_dim, rect viewport) {
-  // make viewport OpenGL style, because our effects are shadertoy based
-  rect v = rec(viewport.x, screen_dim.y - viewport.y - viewport.h, viewport.w, viewport.h);
-  effect->bundle.dyn_state.viewport = v;
-  data->screen_dim = v2m(v.w, v.h);
-  data->screen_offset = v2m(v.x, v.y);
+  effect->bundle.dyn_state.viewport = viewport;
+  data->screen_dim = v2m(viewport.w, viewport.h);
+
+  // Do we ACTUALLY need this?
+  data->screen_offset = v2m(viewport.x, viewport.y);
 
   switch (effect->kind) {
     case EFFECT_KIND_BLUR_SOURCE:
