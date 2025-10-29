@@ -1,6 +1,7 @@
 #include "game.h"
 #include "gui/gui.h"
 
+
 // Forward Declarations, I don't like this.. @FIXME
 typedef struct { u8 *data; u64 width; u64 height; } Platform_Image_Data;
 Platform_Image_Data platform_load_image_bytes_as_rgba(const char *filepath);
@@ -27,7 +28,7 @@ void game_init(Game_State *gs) {
   // DUMMY gui panel hierarchy for testing
   Gui_Panel *p_up = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
   p_up->label = MAKE_STR("p_up");
-  p_up->parent_pct = 0.8;
+  p_up->parent_pct = 0.7;
   p_up->split_axis = GUI_AXIS_X;
   dll_push_back(gui_get_ctx()->root_panel->first, gui_get_ctx()->root_panel->last, p_up);
   p_up->parent = gui_get_ctx()->root_panel;
@@ -35,7 +36,7 @@ void game_init(Game_State *gs) {
 
   Gui_Panel *p_down = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
   p_down->label = MAKE_STR("p_down");
-  p_down->parent_pct = 0.2;
+  p_down->parent_pct = 0.3;
   p_down->split_axis = GUI_AXIS_Y;
   dll_push_back(gui_get_ctx()->root_panel->first, gui_get_ctx()->root_panel->last, p_down);
   p_down->parent = gui_get_ctx()->root_panel;
@@ -79,6 +80,22 @@ void game_init(Game_State *gs) {
   //Json_Element *r3 = json_lookup(root, MAKE_STR("msg-bools"));
   assert(r3);
   assert(buf_to_bool(r3->first->value) == true);
+
+
+  /*
+  game_json[sizeof(game_json)-1] = '\0'; // null teminate the embedded json
+  Json_Element *gj = json_parse(gs->persistent_arena, (char*)game_json);
+  assert(gj);
+  Json_Element *gj0_id = json_lookup(gj->first, MAKE_STR("ID"));
+  assert(gj0_id);
+  assert(buf_to_int(gj0_id->value) == 0);
+  Json_Element *gj1_id = json_lookup(gj->first->next, MAKE_STR("ID"));
+  assert(gj1_id);
+  assert(buf_to_int(gj1_id->value) == 1);
+  */
+
+  gs->vns = vn_load_new_game(gs->persistent_arena);
+
 }
 
 void game_update(Game_State *gs, float dt) {
@@ -91,6 +108,7 @@ void game_update(Game_State *gs, float dt) {
 
 void game_render(Game_State *gs, float dt) {
   ogl_clear(col(0.0,0.0,0.0,1.0));
+
   gui_frame_begin(gs->screen_dim, dt);
 
   /*
@@ -135,7 +153,6 @@ void game_render(Game_State *gs, float dt) {
   gui_pop_font_scale();
   */
 
-
   // Label List on up-left tile of screen
   Gui_Box *up_left = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_p_up_left")));
   assert(!gui_box_is_nil(up_left));
@@ -161,21 +178,8 @@ void game_render(Game_State *gs, float dt) {
   gui_scroll_list_end(MAKE_STR("scroll_list"));
   gui_pop_font_scale();
 
-
-  // Dialog box on down tile of screen
-  Gui_Box *down = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_p_down")));
-  assert(!gui_box_is_nil(down));
-  gui_set_next_parent(down);
-
-  static char *text1="this is some random text to just test out the multiline text functionality, press next";
-  static char *text2="You can press prev to go back? Not sure about that";
-  static char *selected_text = "";
-  if (!cstr_len(selected_text))selected_text = text1;
-
-  Gui_Dialog_State ds = gui_dialog(MAKE_STR("dialog1"), MAKE_STR("Alex"), MAKE_STR(selected_text));  
-  if (ds == GUI_DIALOG_STATE_PREV_PRESSED)selected_text = text1;
-  if (ds == GUI_DIALOG_STATE_NEXT_PRESSED)selected_text = text2;
-
+  // This updates ui
+  vn_simulate(&gs->vns, dt);
 
   gui_frame_end();
 
@@ -210,8 +214,12 @@ void game_render(Game_State *gs, float dt) {
       .tex = gs->red,
       .rot_deg = ts,
   });
-  u32 xidx = (u32)ts % ATLAS_SPRITES_X;
-  u32 yidx = (u32)ts / ATLAS_SPRITES_X;
+
+  // ULTRA HACKY WE SET THE IMAGE MANUALLY
+  u32 tc = gs->vns.img_idx;
+
+  u32 xidx = (u32)tc % ATLAS_SPRITES_X;
+  u32 yidx = (u32)tc / ATLAS_SPRITES_X;
   r2d_push_quad(rend, (R2D_Quad) {
       .src_rect = rec(xidx*8, yidx*8, 8, 8),
       .dst_rect = rec(1,1,8,8),
@@ -220,7 +228,6 @@ void game_render(Game_State *gs, float dt) {
       .rot_deg = ts,
   });
   r2d_end(rend);
-
 
   /*
   // Effect Testing

@@ -477,10 +477,12 @@ bool ogl_tex_init(Ogl_Tex *tex, u8 *data, u32 w, u32 h, Ogl_Tex_Format format, O
   // WebGL2 doesn't support texture swizzles.. so.. we do nothing here !!!! ???? @@@@
   // https://registry.khronos.org/webgl/specs/latest/2.0/#5.18
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+#if 0 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_RED);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_GREEN);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_BLUE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_ALPHA);
+#endif
   //----------------------------------------------------------------
 
   bool is_floating_point = ogl_tex_format_is_floating_point(tex->format);

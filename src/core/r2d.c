@@ -153,6 +153,7 @@ static R2D_Quad_Array rend_quad_chunk_list_to_array(Arena *arena, R2D_Quad_Chunk
   return qa;
 }
 
+// TODO: DONT DONT DONT use sprintf, could we do arena_sprintf(..) here?
 static void r2d_flush(R2D *rend, Batch_Vertex *vertices, u64 count) {
   // We set the correct texture for each slot, if not found, we just assign a dummy white texture for debug purposes
   char name_buf[REND_MAX_TEXTURES][64] = {};

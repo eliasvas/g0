@@ -227,7 +227,7 @@ b32 gui_box_is_nil(Gui_Box *box);
 Gui_Box *gui_box_make(Gui_Box_Flags flags, buf s);
 Gui_Box *gui_box_lookup_from_key(Gui_Box_Flags flags, Gui_Key key);
 Gui_Box *gui_box_build_from_str(Gui_Box_Flags flags, buf s);
-Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key);
+Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key, buf s);
 
 void gui_autopop_all_stacks();
 void gui_init_stacks();

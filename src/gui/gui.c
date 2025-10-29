@@ -51,6 +51,7 @@ Gui_Key gui_key_from_str(buf s) {
 	Gui_Key res = gui_key_zero();
   if (s.count > 0) {
     res = gui_key_make(djb2_buf(s));
+    //printf("key: %.*s\n", (int)s.count, s.data);
   }
 	return res;
 }
@@ -86,7 +87,7 @@ Gui_Box* gui_box_lookup_from_key(Gui_Box_Flags flags, Gui_Key key) {
 	return res;
 }
 
-Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
+Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key, buf s) {
   Gui_Context *gctx = gui_get_ctx();
   Gui_Box *parent = gui_top_parent();
 
@@ -98,7 +99,7 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 
   // If we find the box to have updated frame_idx, its a double creation of same idx..
   if(!box_first_time && box->last_used_frame_idx == gui_get_ctx()->frame_idx) {
-		printf("Key [%lu] has been detected twice, which means some box's hash to same ID!\n", key);
+		printf("Key [%.*s][%lu] has been detected twice, which means some box's hash to same ID!\n", (int)s.count, s.data, key);
 		box = gui_box_nil_id();
 		key = gui_key_zero();
 		box_first_time = 1;
@@ -184,7 +185,7 @@ Gui_Box *gui_box_build_from_key(Gui_Box_Flags flags, Gui_Key key) {
 
 Gui_Box *gui_box_build_from_str(Gui_Box_Flags flags, buf s) {
 	Gui_Key key = gui_key_from_str(s);
-	Gui_Box *box = gui_box_build_from_key(flags, key);
+	Gui_Box *box = gui_box_build_from_key(flags, key, s);
 	if (s.count > 0){
     box->s = s;
 	}
@@ -581,9 +582,6 @@ void gui_render_hierarchy(Gui_Box *box) {
     for (Gui_Box *parent = box->parent; !gui_box_is_nil(parent); parent = parent->parent) {
       if (parent->flags & GB_FLAG_CLIP) {
         clip_rect = ogl_to_gl_rect(parent->r, gctx->screen_dim.y);
-
-    //gs->game_viewport = rec(r.x, gs->screen_dim.y - r.y - r.h, r.w, r.h);
-
         break;
       } 
     }
@@ -673,7 +671,9 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
       gui_set_next_child_layout_axis(GUI_AXIS_Y); // ?
       gui_set_next_bg_color(v4m(0.2,0.2,0.2,0.7)); // TODO: styles?
                                                    
-      buf name = arena_sprintf(gui_get_ctx()->temp_arena, "panel_%.*s", panel->label.count, panel->label.data);
+      assert(panel->label.count > 0);
+      assert(panel->label.data != nullptr);
+      buf name = arena_sprintf(gui_get_ctx()->temp_arena, "panel_%.*s", (int)panel->label.count, panel->label.data);
       Gui_Signal s = gui_pane(name);
       s.flags &= ~GB_FLAG_DRAW_TEXT;
     }
@@ -709,7 +709,7 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
       gui_set_next_child_layout_axis(GUI_AXIS_Y); // ?
       gui_set_next_bg_color(v4m(0.1,0.6,0.8,1));
 
-      buf name = arena_sprintf(gui_get_ctx()->temp_arena, "drag_boundary_%.*s", child->label.count, child->label.data);
+      buf name = arena_sprintf(gui_get_ctx()->temp_arena, "drag_boundary_%.*s", (int)child->label.count, child->label.data);
       Gui_Signal s = gui_button(name);
       s.box->flags &= ~GB_FLAG_DRAW_TEXT;
 
@@ -790,7 +790,7 @@ Gui_Signal gui_scroll_list_begin(buf s, Gui_Axis axis, Gui_Scroll_Data *sdata) {
   gui_set_next_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
   gui_set_next_child_layout_axis(axis);
 
-  buf scroll_region_text = arena_sprintf(gui_get_ctx()->temp_arena, "%.*s_region", s.count, s.data);
+  buf scroll_region_text = arena_sprintf(gui_get_ctx()->temp_arena, "%.*s_region", (int)s.count, s.data);
 	Gui_Box *scroll_region = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND, scroll_region_text);
 
   f32 scroll_region_dim = (axis == GUI_AXIS_Y) ? scroll_region->r.h : scroll_region->r.w;
@@ -807,7 +807,7 @@ Gui_Signal gui_scroll_list_begin(buf s, Gui_Axis axis, Gui_Scroll_Data *sdata) {
     gui_set_next_child_layout_axis(axis);
     gui_set_next_bg_color(v4_multf(gui_top_bg_color(), 0.9));
 
-    buf scroll_bar_text = arena_sprintf(gui_get_ctx()->temp_arena, "%.*s_bar", s.count, s.data);
+    buf scroll_bar_text = arena_sprintf(gui_get_ctx()->temp_arena, "%.*s_bar", (int)s.count, s.data);
     Gui_Box *scroll_bar= gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND, scroll_bar_text);
 
     gui_push_parent(scroll_bar);
@@ -815,7 +815,7 @@ Gui_Signal gui_scroll_list_begin(buf s, Gui_Axis axis, Gui_Scroll_Data *sdata) {
     gui_set_next_pref_size(axis, (Gui_Size){.kind = GUI_SIZE_KIND_PIXELS, scroll_button_dim, 1.0});
     gui_set_next_pref_size(gui_axis_flip(axis), (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
     gui_set_next_bg_color(sdata->scroll_button_color);
-    buf scroll_button_text = arena_sprintf(gui_get_ctx()->temp_arena, "%.*s_sbutton", s.count, s.data);
+    buf scroll_button_text = arena_sprintf(gui_get_ctx()->temp_arena, "%.*s_sbutton", (int)s.count, s.data);
     Gui_Box *scroll_button = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLICKABLE, scroll_button_text);
     Gui_Signal scroll_button_sig = gui_get_signal_for_box(scroll_button);
     gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0 - sdata->scroll_percent, 0.0});

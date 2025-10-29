@@ -1,6 +1,7 @@
 #ifndef _GAME_H__
 #define _GAME_H__
 
+#include "vn.h"
 #include "base/base_inc.h"
 #include "core/core_inc.h"
 
@@ -18,6 +19,8 @@ typedef struct {
 
   Effect fill_effect;
   Effect vortex_effect;
+
+  VN_System vns;
 } Game_State;
 
 // Not sure if these should be exposed as we will load them via DLL in the future

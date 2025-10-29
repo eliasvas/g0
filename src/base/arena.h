@@ -48,6 +48,7 @@ static void* arena_push_nz(Arena *arena, u64 size_in_bytes) {
   arena->current += size_in_bytes;
 
   assert(arena->current <= arena->committed && "Arena's current idx due to align forward has exceeded committed idx");
+  assert(arena->current <= arena->reserved);
   
   return ret;
 }
@@ -110,6 +111,7 @@ static buf arena_sprintf(Arena *arena, const char* format, ...) {
 
   // Also because of push_array_nz, the 'null' terminator is not nulled
   char *mem = arena_push_array_nz(arena, u8, size);
+  assert(mem);
 
   va_end(args);
   va_start(args, format);

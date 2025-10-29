@@ -1,0 +1,42 @@
+[
+  {
+    "ID" : 0,
+    "text" : "M-",
+    "name" : "Alex",
+    "nextID" : 1,
+    "img_idx" : 24,
+    "trans_sec" : 0.2
+  },
+  {
+    "ID" : 1,
+    "text" : "Maria",
+    "name" : "Alex",
+    "img_idx" : 24,
+    "nextID" : 2,
+    "trans_sec" : 0.4
+  },
+  {
+    "ID" : 2,
+    "text" : "Den eisai h maria OvO",
+    "img_idx" : 24,
+    "name" : "Alex",
+    "nextID" : 3,
+    "trans_sec" : 1.0
+  },
+  {
+    "ID" : 3,
+    "text" : "Uhhhh..",
+    "name" : "Girl",
+    "img_idx" : 8,
+    "nextID" : 4,
+    "trans_sec" : 1.0
+  },
+  {
+    "ID" : 4,
+    "text" : "Poia eisai O_o?",
+    "img_idx" : 24,
+    "name" : "Alex",
+    "nextID" : 3,
+    "trans_sec" : 1.0
+  }
+]
