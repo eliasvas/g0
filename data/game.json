@@ -1,42 +1,76 @@
 [
   {
     "ID" : 0,
-    "text" : "M-",
-    "name" : "Alex",
-    "nextID" : 1,
-    "img_idx" : 24,
-    "trans_sec" : 0.2
+    "Dialog" : {
+      "name" : "Tim",
+      "img_idx" : 9,
+      "text" : "Stooop!"
+    },
+    "Static" : {
+      "duration" : 0.3,
+      "nextID" : 1
+    }
   },
   {
     "ID" : 1,
-    "text" : "Maria",
-    "name" : "Alex",
-    "img_idx" : 24,
-    "nextID" : 2,
-    "trans_sec" : 0.4
+    "Dialog" : {
+      "name" : "Tim",
+      "img_idx" : 9,
+      "text" : "What is yer favorite Color?!"
+    },
+    "Choices" : [
+      {
+        "choice" : "Blue",
+        "nextID" : 2
+      }, 
+      {
+        "choice" : "Red",
+        "nextID" : 4
+      },
+      {
+        "choice" : "Green",
+        "nextID" : 4
+      },
+      {
+        "choice" : "Yellow",
+        "nextID" : 4
+      }
+    ]
   },
   {
     "ID" : 2,
-    "text" : "Den eisai h maria OvO",
-    "img_idx" : 24,
-    "name" : "Alex",
-    "nextID" : 3,
-    "trans_sec" : 1.0
+    "Dialog" : {
+      "name" : "You",
+      "img_idx" : 4,
+      "text" : "B-B-B-Blue?"
+    },
+    "Static" : {
+      "duration" : 0.3,
+      "nextID" : 3
+    }
   },
   {
     "ID" : 3,
-    "text" : "Uhhhh..",
-    "name" : "Girl",
-    "img_idx" : 8,
-    "nextID" : 4,
-    "trans_sec" : 1.0
+    "Dialog" : {
+      "name" : "Tim",
+      "img_idx" : 9,
+      "text" : "Alright! Off you go then!"
+    },
+    "Static" : {
+      "duration" : 0.5,
+      "nextID" : 0
+    }
   },
   {
     "ID" : 4,
-    "text" : "Poia eisai O_o?",
-    "img_idx" : 24,
-    "name" : "Alex",
-    "nextID" : 3,
-    "trans_sec" : 1.0
+    "Dialog" : {
+      "name" : "You",
+      "img_idx" : 4,
+      "text" : "AAAAAAAH! (Plunged into the gorge of eternal peril)"
+    },
+    "Static" : {
+      "duration" : 0.5,
+      "nextID" : 0
+    }
   }
 ]

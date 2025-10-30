@@ -109,6 +109,54 @@ void game_update(Game_State *gs, float dt) {
 void game_render(Game_State *gs, float dt) {
   ogl_clear(col(0.0,0.0,0.0,1.0));
 
+#define ATLAS_SPRITES_X 16
+#define ATLAS_SPRITES_Y 10
+  R2D* fs_rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, gs->game_viewport, gs->game_viewport);
+  r2d_push_quad(fs_rend, (R2D_Quad) {
+      .src_rect = rec(0,0,128,80),
+      .dst_rect = rec(0,0,gs->game_viewport.w,gs->game_viewport.h),
+      .c = col(1,1,1,1),
+      .tex = gs->atlas,
+  });
+  r2d_end(fs_rend);
+
+  // Effect Testing too :)
+  Effect_Data vortex_data = {
+    .screen_dim = v2m(gs->game_viewport.w, gs->game_viewport.h),
+    .time_sec = platform_get_time(),
+    .framerate = 1.0f/dt,
+    .param0 = v4m(0.8,0,0,0), // param0.x is alpha currently
+  };
+  effect_render(&gs->vortex_effect, &vortex_data, gs->screen_dim, gs->game_viewport);
+
+  float speedup = 3.0;
+  f64 ts = platform_get_time()*speedup;
+  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->game_viewport.w/2.0, gs->game_viewport.h/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,}, gs->game_viewport, gs->game_viewport);
+
+  r2d_push_quad(rend, (R2D_Quad) {
+      .src_rect = rec(0,0,0,0),
+      .dst_rect = rec(0,0,10,10),
+      .c = col(1,1,1,0.8),
+      .tex = gs->red,
+      .rot_deg = ts,
+  });
+
+  // ULTRA HACKY WE SET THE IMAGE MANUALLY
+  u32 tc = gs->vns.active_dialog.img_idx;
+
+  u32 xidx = (u32)tc % ATLAS_SPRITES_X;
+  u32 yidx = (u32)tc / ATLAS_SPRITES_X;
+  r2d_push_quad(rend, (R2D_Quad) {
+      .src_rect = rec(xidx*8, yidx*8, 8, 8),
+      .dst_rect = rec(1,1,8,8),
+      .c = col(1,1,1,1),
+      .tex = gs->atlas,
+      .rot_deg = ts,
+  });
+  r2d_end(rend);
+
+
+
   gui_frame_begin(gs->screen_dim, dt);
 
   /*
@@ -182,53 +230,6 @@ void game_render(Game_State *gs, float dt) {
   vn_simulate(&gs->vns, dt);
 
   gui_frame_end();
-
-#define ATLAS_SPRITES_X 16
-#define ATLAS_SPRITES_Y 10
-  R2D* fs_rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, gs->game_viewport, gs->game_viewport);
-  r2d_push_quad(fs_rend, (R2D_Quad) {
-      .src_rect = rec(0,0,128,80),
-      .dst_rect = rec(0,0,gs->game_viewport.w,gs->game_viewport.h),
-      .c = col(1,1,1,1),
-      .tex = gs->atlas,
-  });
-  r2d_end(fs_rend);
-
-  // Effect Testing too :)
-  Effect_Data vortex_data = {
-    .screen_dim = v2m(gs->game_viewport.w, gs->game_viewport.h),
-    .time_sec = platform_get_time(),
-    .framerate = 1.0f/dt,
-    .param0 = v4m(0.8,0,0,0), // param0.x is alpha currently
-  };
-  effect_render(&gs->vortex_effect, &vortex_data, gs->screen_dim, gs->game_viewport);
-
-  float speedup = 3.0;
-  f64 ts = platform_get_time()*speedup;
-  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->game_viewport.w/2.0, gs->game_viewport.h/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,}, gs->game_viewport, gs->game_viewport);
-
-  r2d_push_quad(rend, (R2D_Quad) {
-      .src_rect = rec(0,0,0,0),
-      .dst_rect = rec(0,0,10,10),
-      .c = col(1,1,1,0.8),
-      .tex = gs->red,
-      .rot_deg = ts,
-  });
-
-  // ULTRA HACKY WE SET THE IMAGE MANUALLY
-  u32 tc = gs->vns.img_idx;
-
-  u32 xidx = (u32)tc % ATLAS_SPRITES_X;
-  u32 yidx = (u32)tc / ATLAS_SPRITES_X;
-  r2d_push_quad(rend, (R2D_Quad) {
-      .src_rect = rec(xidx*8, yidx*8, 8, 8),
-      .dst_rect = rec(1,1,8,8),
-      .c = col(1,1,1,1),
-      .tex = gs->atlas,
-      .rot_deg = ts,
-  });
-  r2d_end(rend);
-
   /*
   // Effect Testing
   Effect_Data fill_data = {
@@ -242,3 +243,9 @@ void game_render(Game_State *gs, float dt) {
   */
 }
 
+// Every node can have some of the following
+// - ID: The node ID
+// - Effect: An Effect for all gameplay screen (like blur/fill whatever)
+// - Dialog: A piece of text along with a Name
+// - Choices: An array of on-screen choices, when one is clicked, the scene finishes
+// - Static: Will just finish in duration and go to next

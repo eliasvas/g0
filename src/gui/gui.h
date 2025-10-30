@@ -338,5 +338,6 @@ typedef enum {
   GUI_DIALOG_STATE_PREV_PRESSED = 2,
 }Gui_Dialog_State;
 Gui_Dialog_State gui_dialog(buf id, buf person_name, buf prompt);
+int gui_choice_box(buf id, buf *choices, int count);
 
 #endif

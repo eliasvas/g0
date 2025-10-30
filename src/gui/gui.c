@@ -669,7 +669,7 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
       gui_set_next_fixed_width(r.w - BOUNDARY_THICKNESS*2);
       gui_set_next_fixed_height(r.h - BOUNDARY_THICKNESS*2);
       gui_set_next_child_layout_axis(GUI_AXIS_Y); // ?
-      gui_set_next_bg_color(v4m(0.2,0.2,0.2,0.7)); // TODO: styles?
+      //gui_set_next_bg_color(v4m(0.2,0.2,0.2,0.7)); // TODO: styles?
                                                    
       assert(panel->label.count > 0);
       assert(panel->label.data != nullptr);
@@ -878,6 +878,7 @@ Gui_Signal gui_multi_line_text(buf s, buf text) {
     mtext.data += glyphs_needed;
   }
   gui_pop_parent();
+  gui_pop_bg_color();
 
   return gui_get_signal_for_box(text_container);
 }
@@ -911,7 +912,7 @@ Gui_Dialog_State gui_dialog(buf id, buf person_name, buf prompt) {
   gui_push_parent(buttons_container);
   {
     gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 0.0});
-    gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 0.0});
+    gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 1.0});
     gui_set_next_bg_color(col(0.7,0.5,0.4, 1.0));
     gui_set_next_text_color(col(0.9,0.9,0.3, 0.8));
     Gui_Signal s = gui_button(arena_sprintf(gui_get_ctx()->temp_arena, "Next##__next_button%.*s", (int)id.count, id.data));
@@ -920,7 +921,7 @@ Gui_Dialog_State gui_dialog(buf id, buf person_name, buf prompt) {
     gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1, 0.0});
 
     gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 0.0});
-    gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 0.0});
+    gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 1.0});
     gui_set_next_bg_color(col(0.5,0.3,0.5, 1.0));
     gui_set_next_text_color(col(0.9,0.9,0.3, 0.8));
     s = gui_button(arena_sprintf(gui_get_ctx()->temp_arena, "Prev##__prev_button%.*s", (int)id.count, id.data));
@@ -933,4 +934,46 @@ Gui_Dialog_State gui_dialog(buf id, buf person_name, buf prompt) {
   return ds;
 }
 
+int gui_choice_box(buf id, buf *choices, int count) {
+  int ret = -1;
+  //gui_push_bg_color(col(0.2,0.2,0.2,1.0));
+  gui_pop_bg_color(); // There is a bg_color running wild somewhere
+
+  gui_push_text_alignment(GUI_TEXT_ALIGNMENT_CENTER);
+  gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+  gui_set_next_child_layout_axis(GUI_AXIS_Y);
+  Gui_Box *master_container = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, id);
+  gui_push_parent(master_container);
+
+  gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1, 0.0});
+  for (int i = 0; i < count; ++i) {
+    gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_CHILDREN_SUM, 1.0, 1.0});
+    gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
+    gui_set_next_child_layout_axis(GUI_AXIS_X);
+    Gui_Box *sub_container = gui_box_build_from_str(GB_FLAG_DRAW_BACKGROUND|GB_FLAG_CLIP, arena_sprintf(gui_get_ctx()->temp_arena, "%.*s_subcontainer##%i", (int)id.count, id.data, i));
+    gui_push_parent(sub_container);
+
+    gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1, 0.0});
+
+    gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 1.0});
+    gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 1.0});
+    gui_set_next_bg_color(col(0.1,0.1,0.1,1.0));
+    gui_set_next_text_color(col(0.9,0.9,0.3, 0.8));
+    Gui_Signal s = gui_button(arena_sprintf(gui_get_ctx()->temp_arena, "%.*s##%i", (int)choices[i].count, choices[i].data, i));
+    if (s.flags & GUI_SIGNAL_FLAG_LMB_PRESSED) {
+      ret = i;
+    }
+
+    gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1, 0.0});
+
+    gui_pop_parent();
+  }
+  gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1, 0.0});
+
+  gui_pop_parent();
+  gui_pop_text_alignment();
+
+  return ret;
+}
 
