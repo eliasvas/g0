@@ -1,5 +1,6 @@
 #include "vn.h"
 #include "gui/gui.h"
+#include "core/core_inc.h"
 
 // TODO: Make the game.json loaded from disk ok?
 static u8 game_json[] = {
@@ -37,7 +38,34 @@ void vn_extract(VN_System *vns, Json_Element *node) {
     vns->choice_count = itr;
   }
 
-  // MORE to be added
+  effect_destroy(&vns->active_effect.e);
+  Json_Element *effect = json_lookup(node, MAKE_STR("Effect"));
+  if (effect) {
+    buf kind = json_lookup(effect, MAKE_STR("kind"))->value;
+    if (buf_eq(kind, MAKE_STR("EFFECT_KIND_FILL"))) {
+      vns->active_effect.e = effect_make(EFFECT_KIND_FILL);
+    } else if (buf_eq(kind, MAKE_STR("EFFECT_KIND_VORTEX"))) {
+      vns->active_effect.e = effect_make(EFFECT_KIND_VORTEX);
+    }
+    Json_Element *param0 = json_lookup(effect, MAKE_STR("param0"));
+    if (param0) {
+      param0 = param0->first;
+      for (u32 i = 0; i < 4; ++i) {
+        vns->active_effect.param0.raw[i] = buf_to_float(param0->value);
+        param0 = param0->next;
+      }
+    }
+    Json_Element *param1 = json_lookup(effect, MAKE_STR("param1"));
+    if (param1) {
+      param1 = param1->first;
+      for (u32 i = 0; i < 4; ++i) {
+        vns->active_effect.param1.raw[i] = buf_to_float(param1->value);
+        param1 = param1->next;
+      }
+    }
+    Json_Element *duration  = json_lookup(effect, MAKE_STR("duration"));
+    vns->active_effect.duration = (duration) ? buf_to_float(duration->value) : F64_MAX;
+  }
 }
 
 // TODO: Make the VN_System have its own 'game' arena ok?
@@ -68,11 +96,30 @@ Json_Element * vn_goto(VN_System *vns, u32 idx) {
   return current;
 }
 
-void vn_simulate(VN_System *vns, f64 dt) {
+void vn_simulate(VN_System *vns, v2 screen_dim, f64 dt) {
+  Gui_Box *up_right = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_p_up_right")));
+  assert(!gui_box_is_nil(up_right));
+ 
+  // 1. First render the effect
+  // I don't like this too much, effects kinda suck rn
+  if (vns->active_effect.duration > 0 && vns->active_effect.e.kind != EFFECT_KIND_NONE) {
+    rect v = ogl_to_gl_rect(up_right->r, screen_dim.y);
+    Effect_Data ed = {
+      //.screen_dim = v2m(v.w, v.h),
+      .screen_dim = screen_dim,
+      .time_sec = platform_get_time(),
+      .framerate = 1.0f/dt,
+      .param0 = vns->active_effect.param0,
+      .param1 = vns->active_effect.param1,
+    };
+    effect_render(&vns->active_effect.e, &ed, screen_dim, v);
+    vns->active_effect.duration = maximum(0, vns->active_effect.duration - dt);
+  }
+
+  // 2. Then render the dialog box
   // Dialog box on down tile of screen
   Gui_Box *down = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_p_down")));
   assert(!gui_box_is_nil(down));
-
   VN_Active_Dialog *dialog = &vns->active_dialog;
   buf s_cut = buf_make(dialog->text.data, lerp(1, dialog->text.count, (vns->duration_target) ? vns->duration / vns->duration_target : 1));
   gui_set_next_parent(down);
@@ -87,9 +134,8 @@ void vn_simulate(VN_System *vns, f64 dt) {
     vns->duration = clamp(vns->duration+dt, 0, vns->duration_target);
   }
 
+  // 3. Then any choices the player needs to take
   // HORRIBLE HORRIBLE HORRIBLE
-  Gui_Box *up_right = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_p_up_right")));
-  assert(!gui_box_is_nil(up_right));
   gui_push_parent(up_right);
   if (vns->choice_count > 0) {
     buf choices[MAX_VN_CHOICE];
@@ -102,8 +148,6 @@ void vn_simulate(VN_System *vns, f64 dt) {
   }
   gui_pop_parent();
 }
-
-
 
 
 

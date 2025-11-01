@@ -7,7 +7,7 @@
       "text" : "Stooop!"
     },
     "Static" : {
-      "duration" : 0.3,
+      "duration" : 0.5,
       "nextID" : 1
     }
   },
@@ -17,6 +17,10 @@
       "name" : "Tim",
       "img_idx" : 9,
       "text" : "What is yer favorite Color?!"
+    },
+    "Effect" : {
+      "kind" : "EFFECT_KIND_VORTEX",
+      "param0" : [0.7,0,0,1]
     },
     "Choices" : [
       {
@@ -44,6 +48,11 @@
       "img_idx" : 4,
       "text" : "B-B-B-Blue?"
     },
+    "Effect" : {
+      "kind" : "EFFECT_KIND_FILL",
+      "param0" : [ 0.1, 0.1, 0.9, 0.3],
+      "duration" : 2.0
+    },
     "Static" : {
       "duration" : 0.3,
       "nextID" : 3
@@ -67,6 +76,11 @@
       "name" : "You",
       "img_idx" : 4,
       "text" : "AAAAAAAH! (Plunged into the gorge of eternal peril)"
+    },
+    "Effect" : {
+      "kind" : "EFFECT_KIND_FILL",
+      "param0" : [ 0.8, 0.1, 0.1, 0.3],
+      "duration" : 2.0
     },
     "Static" : {
       "duration" : 0.5,

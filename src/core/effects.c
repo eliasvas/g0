@@ -77,6 +77,8 @@ Effect effect_make(Effect_Kind kind) {
 
   // For example, we can attach rt's or textures or stuff depending on kind
   switch (e.kind) {
+    case EFFECT_KIND_NONE:
+      break;
     case EFFECT_KIND_BLUR_SOURCE:
       break;
     case EFFECT_KIND_PIXELATE_SOURCE:
@@ -103,6 +105,14 @@ Effect effect_make(Effect_Kind kind) {
   return e;
 }
 
+void effect_destroy(Effect *e) {
+  if (e->kind != EFFECT_KIND_NONE) {
+    ogl_render_bundle_destroy(&e->bundle);
+    e->kind = EFFECT_KIND_NONE;
+  }
+}
+
+
 void effect_render(Effect *effect, Effect_Data *data, v2 screen_dim, rect viewport) {
   effect->bundle.dyn_state.viewport = viewport;
   data->screen_dim = v2m(viewport.w, viewport.h);
@@ -111,6 +121,9 @@ void effect_render(Effect *effect, Effect_Data *data, v2 screen_dim, rect viewpo
   data->screen_offset = v2m(viewport.x, viewport.y);
 
   switch (effect->kind) {
+    case EFFECT_KIND_NONE:
+      return;
+      break;
     case EFFECT_KIND_BLUR_SOURCE:
       break;
     case EFFECT_KIND_PIXELATE_SOURCE:
@@ -118,6 +131,7 @@ void effect_render(Effect *effect, Effect_Data *data, v2 screen_dim, rect viewpo
     case EFFECT_KIND_VORTEX:
       break;
     case EFFECT_KIND_FILL:
+      // here param0 is the color
       break;
     case EFFECT_KIND_COUNT:
       break;

@@ -20,6 +20,14 @@ typedef struct {
 } VN_Choice; 
 
 typedef struct {
+  Effect e;
+  v4 param0;
+  v4 param1;
+  //bool remove_on_exit;
+  f32 duration;
+} VN_Effect;
+
+typedef struct {
   Json_Element *root_node;
   Json_Element *current_node;
   u32 next_node_idx;
@@ -33,12 +41,13 @@ typedef struct {
   VN_Choice choices[MAX_VN_CHOICE];
   s32 choice_count;
 
+  VN_Effect active_effect;
 } VN_System;
 
 
 VN_System vn_load_new_game(Arena *arena);
 
-void vn_simulate(VN_System *vns, f64 dt);
+void vn_simulate(VN_System *vns, v2 screen_dim, f64 dt);
 
 
 #endif 

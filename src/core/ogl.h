@@ -194,6 +194,7 @@ typedef struct {
   extern void ogl_tex_deinit(Ogl_Tex *tex);
 
   extern void ogl_render_bundle_draw(Ogl_Render_Bundle *bundle, Ogl_Prim_Type prim, uint32_t vertex_count, uint32_t instance_count);
+  extern void ogl_render_bundle_destroy(Ogl_Render_Bundle *bundle);
 
   extern void ogl_render_target_init(Ogl_Render_Target *rt, u32 w, u32 h, u32 attachment_count, Ogl_Tex_Format format, bool add_depth);
   extern Ogl_Render_Target ogl_render_target_make(u32 w, u32 h, u32 attachment_count, Ogl_Tex_Format format, bool add_depth);
@@ -562,6 +563,23 @@ void ogl_render_target_deinit(Ogl_Render_Target *rt) {
   glDeleteFramebuffers(1, (GLuint*)&rt->impl_state);
 }
 
+
+void ogl_render_bundle_destroy(Ogl_Render_Bundle *bundle) {
+  ogl_shader_deinit(&bundle->sp);
+  ogl_buf_deinit(&bundle->index_buffer);
+  for (uint64_t slot_idx = 0; slot_idx < OGL_MAX_VERTEX_BUFFERS; ++slot_idx) {
+    Ogl_Vertex_Buffer_Slot *vbo = &bundle->vbos[slot_idx];
+    if (ogl_buf_count_bytes(&vbo->buffer) > 0) {
+      ogl_buf_deinit(&vbo->buffer);
+    }
+  }
+  for (uint64_t slot_idx = 0; slot_idx < OGL_MAX_UNIFORM_BUFFERS; ++slot_idx) {
+    Ogl_Uniform_Buffer_Slot *ubo = &bundle->ubos[slot_idx];
+    if (ogl_buf_count_bytes(&ubo->buffer) > 0) {
+      ogl_buf_deinit(&ubo->buffer);
+    }
+  }
+}
 
 static void ogl_render_bundle_bind(Ogl_Render_Bundle *bundle) {
   // Bind the shader

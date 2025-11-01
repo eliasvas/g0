@@ -956,8 +956,8 @@ int gui_choice_box(buf id, buf *choices, int count) {
 
     gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1, 0.0});
 
-    gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 1.0});
-    gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 5.0, 1.0});
+    gui_set_next_pref_width((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 15.0, 1.0});
+    gui_set_next_pref_height((Gui_Size){.kind = GUI_SIZE_KIND_TEXT_CONTENT, 15.0, 1.0});
     gui_set_next_bg_color(col(0.1,0.1,0.1,1.0));
     gui_set_next_text_color(col(0.9,0.9,0.3, 0.8));
     Gui_Signal s = gui_button(arena_sprintf(gui_get_ctx()->temp_arena, "%.*s##%i", (int)choices[i].count, choices[i].data, i));

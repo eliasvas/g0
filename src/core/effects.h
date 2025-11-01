@@ -3,6 +3,7 @@
 #include "base/base_inc.h"
 
 typedef enum {
+  EFFECT_KIND_NONE,
   EFFECT_KIND_BLUR_SOURCE,
   EFFECT_KIND_PIXELATE_SOURCE,
   EFFECT_KIND_VORTEX,
@@ -28,6 +29,7 @@ typedef struct {
 } Effect_Data;
 
 Effect effect_make(Effect_Kind kind);
+void effect_destroy(Effect *e);
 void effect_render(Effect *effect, Effect_Data *data, v2 screen_dim, rect viewport);
 
 #endif

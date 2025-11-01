@@ -2,6 +2,7 @@
 #define _CORE_INC_H__
 
 #include "base/base_inc.h"
+#include "platform.h"
 #include "ogl.h"
 #include "r2d.h"
 #include "input.h"

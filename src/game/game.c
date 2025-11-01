@@ -3,9 +3,6 @@
 
 
 // Forward Declarations, I don't like this.. @FIXME
-typedef struct { u8 *data; u64 width; u64 height; } Platform_Image_Data;
-Platform_Image_Data platform_load_image_bytes_as_rgba(const char *filepath);
-f64 platform_get_time();
 
 void game_init(Game_State *gs) {
   ogl_init(); // To create the bullshit empty VAO opengl side, nothing else
@@ -121,6 +118,7 @@ void game_render(Game_State *gs, float dt) {
   r2d_end(fs_rend);
 
   // Effect Testing too :)
+  /*
   Effect_Data vortex_data = {
     .screen_dim = v2m(gs->game_viewport.w, gs->game_viewport.h),
     .time_sec = platform_get_time(),
@@ -128,6 +126,7 @@ void game_render(Game_State *gs, float dt) {
     .param0 = v4m(0.8,0,0,0), // param0.x is alpha currently
   };
   effect_render(&gs->vortex_effect, &vortex_data, gs->screen_dim, gs->game_viewport);
+  */
 
   float speedup = 3.0;
   f64 ts = platform_get_time()*speedup;
@@ -154,7 +153,6 @@ void game_render(Game_State *gs, float dt) {
       .rot_deg = ts,
   });
   r2d_end(rend);
-
 
 
   gui_frame_begin(gs->screen_dim, dt);
@@ -227,7 +225,7 @@ void game_render(Game_State *gs, float dt) {
   gui_pop_font_scale();
 
   // This updates ui
-  vn_simulate(&gs->vns, dt);
+  vn_simulate(&gs->vns, gs->screen_dim, dt);
 
   gui_frame_end();
   /*

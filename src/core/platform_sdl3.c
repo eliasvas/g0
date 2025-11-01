@@ -25,13 +25,6 @@
 #define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL_main.h>
 
-typedef struct {
-  u8 *data;
-  u64 width;
-  u64 height;
-  // Always RGBA so no need for component count
-} Platform_Image_Data;
-
 Platform_Image_Data platform_load_image_bytes_as_rgba(const char *filepath) {
   Platform_Image_Data img_data = {};
 
