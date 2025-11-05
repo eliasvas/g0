@@ -160,6 +160,7 @@ typedef struct {
   Arena *temp_arena;
   Arena *persistent_arena;
   Font_Info *font;
+  Input *input_ref;
 
   v2 screen_dim;
   f64 dt;
@@ -213,7 +214,7 @@ typedef struct {
 
 void gui_context_init(Arena *temp_arena, Font_Info *font);
 Arena* gui_get_build_arena();
-void gui_frame_begin(v2 screen_dim, f64 dt);
+void gui_frame_begin(v2 screen_dim, Input *input, f64 dt);
 void gui_frame_end();
 void gui_render_hierarchy(Gui_Box *box);
 

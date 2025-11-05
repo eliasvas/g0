@@ -204,7 +204,7 @@ Gui_Key gui_get_active_box_key(Input_Mouse_Button b) {
 Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
 	Gui_Signal signal = {0};
 	signal.box = box;
-  v2 mp = input_get_mouse_pos();
+  v2 mp = input_get_mouse_pos(gui_get_ctx()->input_ref);
 
 	rect r = box->r;
 
@@ -234,7 +234,7 @@ Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
 	}
 	// if mouse inside box AND mouse button pressed, box is ACTIVE, PRESS event
 	for (each_enumv(Input_Mouse_Button, INPUT_MOUSE, mk)) {
-		if (mouse_inside_box && input_mkey_pressed(mk)) {
+		if (mouse_inside_box && input_mkey_pressed(gui_get_ctx()->input_ref, mk)) {
 			gui_get_ctx()->active_box_keys[mk] = box->key;
 			// TODO -- This is pretty crappy logic, fix someday
 			signal.flags |= (GUI_SIGNAL_FLAG_LMB_PRESSED << mk);
@@ -249,7 +249,7 @@ Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
 	}
 	// if mouse inside box AND mouse button released and box was ACTIVE, reset hot/active RELEASE signal
 	for (each_enumv(Input_Mouse_Button, INPUT_MOUSE, mk)) {
-		if (mouse_inside_box && input_mkey_released(mk) && gui_key_match(gui_get_active_box_key(mk), box->key)) {
+		if (mouse_inside_box && input_mkey_released(gui_get_ctx()->input_ref, mk) && gui_key_match(gui_get_active_box_key(mk), box->key)) {
 			gui_get_ctx()->hot_box_key = gui_key_zero();
 			gui_get_ctx()->active_box_keys[mk]= gui_key_zero();
 			signal.flags |= (GUI_SIGNAL_FLAG_LMB_RELEASED << mk);
@@ -257,7 +257,7 @@ Gui_Signal gui_get_signal_for_box(Gui_Box *box) {
 	}
 	// if mouse outside box AND mouse button released and box was ACTIVE, reset hot/active
 	for (each_enumv(Input_Mouse_Button, INPUT_MOUSE, mk)) {
-		if (!mouse_inside_box && input_mkey_released(mk) && gui_key_match(gui_get_active_box_key(mk), box->key)) {
+		if (!mouse_inside_box && input_mkey_released(gui_get_ctx()->input_ref, mk) && gui_key_match(gui_get_active_box_key(mk), box->key)) {
 			gui_get_ctx()->hot_box_key = gui_key_zero();
 			gui_get_ctx()->active_box_keys[mk] = gui_key_zero();
 		}
@@ -361,9 +361,10 @@ void gui_build_end(void) {
 }
 
 
-void gui_frame_begin(v2 screen_dim, f64 dt) {
+void gui_frame_begin(v2 screen_dim, Input *input, f64 dt) {
   g_gui_ctx.screen_dim = screen_dim;
   g_gui_ctx.dt = dt;
+  g_gui_ctx.input_ref = input;
   gui_build_begin();
 }
 
@@ -604,7 +605,6 @@ void gui_render_hierarchy(Gui_Box *box) {
 // Gui Panels
 ///////////////////////////////////
 
-// TODO: Maybe we should make a gui_panel_nil_id() too?
 Gui_Panel *gui_panel_traverse_dfs_preorder(Gui_Panel *panel) {
   Gui_Panel *itr = nullptr;
   if (panel->first != nullptr) { // we go down the hierarchy
@@ -716,7 +716,7 @@ void gui_panel_layout_panels_and_boundaries(Gui_Panel *root_panel, rect root_rec
       // TODO: fix this dragging its.. HORRIBLE?
       if (gui_get_ctx()->active_box_keys[INPUT_MOUSE_LMB] == s.box->key) {
         //platform_set_cursor((child->split_axis == GUI_AXIS_X) ?  then NORTH_SOUTH else WEST_EAST);
-        v2 mdelta = input_get_mouse_delta();
+        v2 mdelta = input_get_mouse_delta(gui_get_ctx()->input_ref);
         //f32 delta_on_split_axis = mdelta.raw[child->split_axis];
         f32 delta_on_split_axis = mdelta.raw[panel->split_axis];
         Gui_Panel *left_child = child;
@@ -820,7 +820,7 @@ Gui_Signal gui_scroll_list_begin(buf s, Gui_Axis axis, Gui_Scroll_Data *sdata) {
     Gui_Signal scroll_button_sig = gui_get_signal_for_box(scroll_button);
     gui_spacer((Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0 - sdata->scroll_percent, 0.0});
     if (gui_key_match(scroll_button_sig.box->key, gui_get_active_box_key(INPUT_MOUSE_LMB))) {
-      sdata->scroll_percent += sdata->scroll_speed * input_get_mouse_delta().raw[axis] * gui_get_ctx()->dt;
+      sdata->scroll_percent += sdata->scroll_speed * input_get_mouse_delta(gui_get_ctx()->input_ref).raw[axis] * gui_get_ctx()->dt;
       sdata->scroll_percent = clamp(sdata->scroll_percent, 0, 1);
     }
     scroll_region->view_off.raw[axis] = lerp(min_dim_px, max_dim_px, sdata->scroll_percent);
@@ -847,7 +847,6 @@ void gui_scroll_list_end(buf s) {
   gui_pop_pref_height();
 }
 
-// TODO: add scrolling
 // TODO: make this fast, rn its dog slow ok?
 Gui_Signal gui_multi_line_text(buf s, buf text) {
   assert(s.count);

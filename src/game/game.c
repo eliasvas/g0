@@ -1,8 +1,7 @@
 #include "game.h"
 #include "gui/gui.h"
 
-
-// Forward Declarations, I don't like this.. @FIXME
+//struct platform_api { f64 (*get_time)(); };
 
 void game_init(Game_State *gs) {
   ogl_init(); // To create the bullshit empty VAO opengl side, nothing else
@@ -155,7 +154,7 @@ void game_render(Game_State *gs, float dt) {
   r2d_end(rend);
 
 
-  gui_frame_begin(gs->screen_dim, dt);
+  gui_frame_begin(gs->screen_dim, &gs->input, dt);
 
   /*
   gui_push_font_scale(0.25);
@@ -171,7 +170,7 @@ void game_render(Game_State *gs, float dt) {
     gui_set_next_pref_size(GUI_AXIS_Y, (Gui_Size){.kind = GUI_SIZE_KIND_PARENT_PCT, 1.0, 0.0});
     gui_label(fps_name);
 
-    v2 mp = input_get_mouse_pos();
+    v2 mp = input_get_mouse_pos(&gs->input);
     buf mp_name = arena_sprintf(gs->frame_arena, "mp: (%.0f,%.0f)", mp.x, mp.y); 
     gui_set_next_text_color(col(0.7,0.7,0.7,1.0));
     gui_set_next_bg_color(v4m(0.4,0.2,0.3,1));
@@ -213,7 +212,7 @@ void game_render(Game_State *gs, float dt) {
     .scroll_button_color = (color){{0.6,0.2,0.2,1}},
     .scroll_speed = 0.5,
   };
-  if (input_mkey_pressed(INPUT_MOUSE_RMB))sdata.item_count+=1;
+  if (input_mkey_pressed(&gs->input, INPUT_MOUSE_RMB))sdata.item_count+=1;
   gui_push_font_scale(0.4);
   gui_scroll_list_begin(MAKE_STR("scroll_list"), GUI_AXIS_Y, &sdata);
   for (s32 i = 0; i < sdata.item_count; i+=1) {

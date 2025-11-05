@@ -148,7 +148,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
     };
   }
 
-  g_input_push_event(sdl_state->gs.frame_arena, &input_event.evt);
+  input_push_event(&sdl_state->gs.input, sdl_state->gs.frame_arena, &input_event.evt);
 
   return SDL_APP_CONTINUE;
 }
@@ -158,7 +158,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   SDL_State *sdl_state = (SDL_State*)appstate;
 
   // Process the events for the current frame of execution
-  g_input_process_events();
+  input_process_events(&sdl_state->gs.input);
   // Clear the per-frame arena
   arena_clear(sdl_state->gs.frame_arena);
 
@@ -179,7 +179,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   sdl_state->frame_start = SDL_GetTicksNS();
 
 
-  g_input_end_frame();
+  input_end_frame(&sdl_state->gs.input);
   return SDL_APP_CONTINUE;
 }
 

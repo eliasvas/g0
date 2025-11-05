@@ -157,23 +157,23 @@ typedef struct {
 
     v2 mouse_pos;
     v2 prev_mouse_pos;
-} Input_Singleton;
+} Input;
 
-void g_input_process_events();
-void g_input_end_frame();
-void g_input_push_event(Arena *arena, Input_Event *evt);
+void input_process_events(Input *input);
+void input_end_frame(Input *input);
+void input_push_event(Input *input, Arena *arena, Input_Event *evt);
 
-b32 input_key_pressed(Key_Scancode key);
-b32 input_key_released(Key_Scancode key);
-b32 input_key_up(Key_Scancode key);
-b32 input_key_down(Key_Scancode key);
+b32 input_key_pressed(Input *input, Key_Scancode key);
+b32 input_key_released(Input *input, Key_Scancode key);
+b32 input_key_up(Input *input, Key_Scancode key);
+b32 input_key_down(Input *input, Key_Scancode key);
 
-b32 input_mkey_pressed(Input_Mouse_Button button);
-b32 input_mkey_released(Input_Mouse_Button button);
-b32 input_mkey_up(Input_Mouse_Button button);
-b32 input_mkey_down(Input_Mouse_Button button);
+b32 input_mkey_pressed(Input *input, Input_Mouse_Button button);
+b32 input_mkey_released(Input *input, Input_Mouse_Button button);
+b32 input_mkey_up(Input * input, Input_Mouse_Button button);
+b32 input_mkey_down(Input *input, Input_Mouse_Button button);
 
-v2 input_get_mouse_pos();
-v2 input_get_mouse_delta();
+v2 input_get_mouse_pos(Input *input);
+v2 input_get_mouse_delta(Input *input);
 
 #endif
