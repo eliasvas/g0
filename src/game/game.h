@@ -8,20 +8,21 @@
 typedef struct {
   Arena *persistent_arena; // For persistent allocations
   Arena *frame_arena; // For per-frame allocations
-  v2 screen_dim;
-
-  Input input;
-
   rect game_viewport;
+  
+  // Interface between platform and game
+  v2 screen_dim;
+  Input input;
+  R2D_Cmd_Chunk_List cmd_list;
 
+  // Loaded Asset resources (TODO: Asset system)
   Ogl_Tex atlas;
   Ogl_Tex red;
-
   Font_Info font;
-
   Effect fill_effect;
   Effect vortex_effect;
 
+  // Why is this here
   VN_System vns;
 } Game_State;
 

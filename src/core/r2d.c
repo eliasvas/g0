@@ -99,6 +99,14 @@ void main() {
 // Actual Implementation
 /////////////////////
 
+static b32 r2d_cam_eq(R2D_Cam a, R2D_Cam b) {
+  return (
+      v2_eq(a.origin, b.origin) &&
+      v2_eq(a.offset, b.offset) &&
+      equalf(a.zoom, b.zoom, 0.001) &&
+      equalf(a.rot_deg, b.rot_deg, 0.001)
+      );
+}
 static m4 r2d_cam_make_view_mat(R2D_Cam *cam) {
   //m4 rot = m4d(1.0); // FIXME: implement rotations!
   m4 rot = mat4_rotate(cam->rot_deg, v3m(0,0,1));
@@ -127,6 +135,7 @@ static void rend_quad_chunk_list_push(Arena *arena, R2D_Quad_Chunk_List* list, u
   if (node == nullptr || node->count >= node->cap) {
     node = arena_push_struct(arena, R2D_Quad_Chunk_Node);
     node->arr = arena_push_array(arena, R2D_Quad, cap);
+
     node->cap = cap;
     sll_queue_push(list->first, list->last, node);
     list->node_count+=1;
@@ -149,7 +158,6 @@ static R2D_Quad_Array rend_quad_chunk_list_to_array(Arena *arena, R2D_Quad_Chunk
   }
   assert(itr == qa.count);
 
-
   return qa;
 }
 
@@ -158,7 +166,6 @@ static void r2d_flush(R2D *rend, Batch_Vertex *vertices, u64 count) {
   // We set the correct texture for each slot, if not found, we just assign a dummy white texture for debug purposes
   char name_buf[REND_MAX_TEXTURES][64] = {};
   for (u64 tex_idx = 0; tex_idx < rend->tex_array.cap; ++tex_idx) {
-    // TODO: This is too costly even for temporary storage, fix by making a static array of [MAX_TEXTURES][64]
     sprintf(name_buf[tex_idx], "u_textures[%lu]", tex_idx);
     if (tex_idx < rend->tex_array.count) {
       batch_bundle.textures[tex_idx] = (Ogl_Tex_Slot){ .name = name_buf[tex_idx], .tex = rend->tex_array.textures[tex_idx],};
@@ -168,10 +175,10 @@ static void r2d_flush(R2D *rend, Batch_Vertex *vertices, u64 count) {
   }
   ogl_buf_update(&batch_bundle.vbos[0].buffer, 0, vertices, count, sizeof(Batch_Vertex));
   ogl_render_bundle_draw(&batch_bundle, OGL_PRIM_TYPE_TRIANGLE_FAN, 4, count);
+  rend_tex_array_clear(&rend->tex_array);
 }
 
 R2D* r2d_begin(Arena *arena, R2D_Cam *cam, rect viewport, rect scissor) {
-  //m4 proj = m4_ortho(viewport.x,viewport.x+viewport.w,viewport.y+viewport.h,viewport.y,-1,1);
   m4 proj = m4_ortho(0,viewport.w,viewport.h,0,-1,1);
   m4 view = r2d_cam_make_view_mat(cam);
   m4 m = m4_mult(proj, view);
@@ -201,14 +208,13 @@ R2D* r2d_begin(Arena *arena, R2D_Cam *cam, rect viewport, rect scissor) {
         .flags    = OGL_DYN_STATE_FLAG_BLEND | OGL_DYN_STATE_FLAG_SCISSOR,
       }
     };
-    // FIXME: WHY WHY WHY is a NEW texture made for each new r2d_begin? when is this deinited???? im dumb
     white_tex = ogl_tex_make((u8[]){255,255,255,255}, 1,1, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT});
   }
 
   batch_bundle.dyn_state.viewport = viewport;
   batch_bundle.dyn_state.scissor = scissor;
 
-  ogl_buf_update(&batch_bundle.ubos[0].buffer, 0, &m, 1, sizeof(Batch_Vertex));
+  ogl_buf_update(&batch_bundle.ubos[0].buffer, 0, &m, 1, sizeof(m4));
 
 
   R2D *rend = arena_push_array(arena, R2D, 1);
@@ -223,38 +229,39 @@ R2D* r2d_begin(Arena *arena, R2D_Cam *cam, rect viewport, rect scissor) {
 }
 
 void r2d_end(R2D *rend) {
-  R2D_Quad_Array quads = rend_quad_chunk_list_to_array(rend->arena, &rend->list);
-  R2D_Tex_Array textures = {};
-  textures.count = 0;
+  if (rend) {
+    R2D_Quad_Array quads = rend_quad_chunk_list_to_array(rend->arena, &rend->list);
+    if (quads.count) {
+      R2D_Tex_Array textures = {};
+      textures.count = 0;
 
-  Batch_Vertex *batch_vertices = arena_push_array(rend->arena, Batch_Vertex,REND_MAX_INSTANCES);
+      Batch_Vertex *batch_vertices = arena_push_array(rend->arena, Batch_Vertex,REND_MAX_INSTANCES);
 
-  u64 vertex_idx  = 0;
-  for (u64 quad_idx = 0; quad_idx < quads.count; ++quad_idx) {
-    R2D_Quad *q = &quads.arr[quad_idx];
+      u64 vertex_idx  = 0;
+      for (u64 quad_idx = 0; quad_idx < quads.count; ++quad_idx) {
+        R2D_Quad *q = &quads.arr[quad_idx];
 
-    s64 tex_idx = rend_tex_array_try_add(&rend->tex_array, q->tex);
-    bool tex_added = (tex_idx >= 0);
+        s64 tex_idx = rend_tex_array_try_add(&rend->tex_array, q->tex);
+        bool tex_added = (tex_idx >= 0);
 
-    Batch_Vertex v = (Batch_Vertex){
-      .src_rect = *(v4*)&q->src_rect,
-      .dst_rect = *(v4*)&q->dst_rect,
-      .color = q->c,
-      .rot_rad = DEG2RAD(q->rot_deg),
-      .tex_slot = tex_idx,
-    };
+        Batch_Vertex v = (Batch_Vertex){
+          .src_rect = *(v4*)&q->src_rect,
+          .dst_rect = *(v4*)&q->dst_rect,
+          .color = q->c,
+          .rot_rad = DEG2RAD(q->rot_deg),
+          .tex_slot = tex_idx,
+        };
 
-    batch_vertices[vertex_idx] = v;
-    vertex_idx+=1;
+        batch_vertices[vertex_idx] = v;
+        vertex_idx+=1;
 
-    if (vertex_idx > REND_MAX_INSTANCES || quad_idx+1 >= quads.count || !tex_added) {
-      r2d_flush(rend, batch_vertices, vertex_idx);
-      // cleanup
-      rend_tex_array_clear(&rend->tex_array);
-      vertex_idx = 0;
+        if (vertex_idx >= REND_MAX_INSTANCES || quad_idx+1 >= quads.count || !tex_added) {
+          r2d_flush(rend, batch_vertices, vertex_idx);
+          vertex_idx = 0;
+        }
+      }
     }
   }
-
 }
 
 void r2d_push_quad(R2D *rend, R2D_Quad q) {
@@ -264,4 +271,74 @@ void r2d_push_quad(R2D *rend, R2D_Quad q) {
   // Then push it to the chunk list as normal
   rend_quad_chunk_list_push(rend->arena, &rend->list, 256, q);
 }
+
+void r2d_clear_cmds(R2D_Cmd_Chunk_List *cmd_list) {
+  cmd_list->first = nullptr;
+  cmd_list->last = nullptr;
+
+  cmd_list->node_count = 0;
+  cmd_list->cmd_count = 0;
+}
+
+// This is platform specific, thus is inside the implementation file
+void r2d_render_cmds(Arena *arena, R2D_Cmd_Chunk_List *cmd_list) {
+  // TODO: We could make the stacks here, so that we will be able to push/pop these properties
+  // We will flush if a new camera/scissor/viewport is inserted and add it for subsequent calls
+  R2D *rend = nullptr;  
+  R2D_Cam c = {}; // Should get the default from the nil stack!! 
+  rect viewport = {}; // Should get the default from the nil stack!!
+  rect scissor = {}; // Should get the default from the nil stack!!
+  for (R2D_Cmd_Chunk_Node *node = cmd_list->first; node != nullptr; node = node->next) {
+    for (u64 idx = 0; idx < node->count; idx+=1) {
+      R2D_Cmd cmd = node->arr[idx];
+      switch (cmd.kind) {
+        case R2D_CMD_KIND_SET_VIEWPORT: 
+          if (!rect_equals(viewport, cmd.r)) {
+            r2d_end(rend);
+            viewport = cmd.r;
+            rend = r2d_begin(arena, &c, viewport, scissor);
+          }
+          break;
+        case R2D_CMD_KIND_SET_SCISSOR:
+          if (!rect_equals(scissor, cmd.r)) {
+            r2d_end(rend);
+            scissor = cmd.r;
+            rend = r2d_begin(arena, &c, viewport, scissor);
+          }
+          break;
+        case R2D_CMD_KIND_SET_CAMERA: 
+          if (!r2d_cam_eq(c ,cmd.c)) {
+            r2d_end(rend);
+            c = cmd.c;
+            rend = r2d_begin(arena, &c, viewport, scissor);
+          }
+          break;
+        case R2D_CMD_KIND_ADD_QUAD: 
+          r2d_push_quad(rend, cmd.q);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+  r2d_end(rend);
+  r2d_clear_cmds(cmd_list);
+}
+
+void r2d_push_cmd(Arena *arena, R2D_Cmd_Chunk_List *cmd_list, R2D_Cmd cmd, u64 cap) {
+  R2D_Cmd_Chunk_Node *node = cmd_list->first;
+  if (node == nullptr || node->count >= node->cap) {
+    node = arena_push_struct(arena, R2D_Cmd_Chunk_Node);
+    node->arr = arena_push_array(arena, R2D_Cmd, cap);
+    node->cap = cap;
+
+    sll_queue_push(cmd_list->first, cmd_list->last, node);
+    cmd_list->node_count+=1;
+  }
+  node->arr[node->count] = cmd;
+  node->count+=1;
+  cmd_list->cmd_count+=1;
+}
+
+
 

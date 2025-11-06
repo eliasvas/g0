@@ -356,15 +356,16 @@ void gui_build_end(void) {
   gui_render_hierarchy(gui_get_ctx()->root);
 
 	// clear previous frame's arena + advance frame_index
-	arena_clear(gui_get_build_arena());
+	//arena_clear(gui_get_build_arena()); // We are currently using game's arena, so we should NOT clear it ourselves, EVER
 	state->frame_idx += 1;
 }
 
 
-void gui_frame_begin(v2 screen_dim, Input *input, f64 dt) {
+void gui_frame_begin(v2 screen_dim, Input *input, R2D_Cmd_Chunk_List *cmd_list, f64 dt) {
   g_gui_ctx.screen_dim = screen_dim;
   g_gui_ctx.dt = dt;
   g_gui_ctx.input_ref = input;
+  g_gui_ctx.cmd_list_ref = cmd_list;
   gui_build_begin();
 }
 
@@ -540,18 +541,40 @@ void gui_layout_root(Gui_Box *root, Gui_Axis axis)  {
 }
 
 ///////////////////////////////////
-// Gui Rendering (Platform Specific)
+// Gui Rendering (Using Game_State's Cmd Buffers)
 ///////////////////////////////////
 
 void gui_draw_rect_clip(rect r, v4 c, rect clip_rect) {
   Gui_Context *gctx = gui_get_ctx();
   rect viewport = rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y);
+
+  /*
   R2D* r_rend = r2d_begin(gctx->temp_arena, &(R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, viewport, clip_rect);
   r2d_push_quad(r_rend, (R2D_Quad) {
       .dst_rect = r,
       .c = c,
   });
   r2d_end(r_rend);
+  */
+
+  // set viewport 
+  R2D_Cmd cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_VIEWPORT, .r = viewport };
+  r2d_push_cmd(gctx->temp_arena, gctx->cmd_list_ref, cmd, 256);
+  // set scissor
+  cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_SCISSOR, .r = clip_rect};
+  r2d_push_cmd(gctx->temp_arena, gctx->cmd_list_ref, cmd, 256);
+  // set camera
+  R2D_Cam cam = (R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, };
+  cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_CAMERA, .c = cam };
+  r2d_push_cmd(gctx->temp_arena, gctx->cmd_list_ref, cmd, 256);
+  // push quad
+  R2D_Quad quad = (R2D_Quad) {
+      .dst_rect = r,
+      .c = c,
+  };
+  cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_ADD_QUAD, .q = quad};
+  r2d_push_cmd(gctx->temp_arena, gctx->cmd_list_ref, cmd, 256);
+
 }
 
 void gui_draw_text_clip(rect r, v4 c, f32 font_scale, Gui_Text_Alignment text_alignment, buf s, rect clip_rect) {
@@ -564,7 +587,7 @@ void gui_draw_text_clip(rect r, v4 c, f32 font_scale, Gui_Text_Alignment text_al
   v2 baseline = v2_sub(top_left, label_rect.p0);
 
   rect viewport = rec(0,0,gctx->screen_dim.x, gctx->screen_dim.y);
-  font_util_debug_draw_text(gctx->font, gctx->temp_arena, viewport, clip_rect, s_without_doublehash, baseline, font_scale, c, false);
+  font_util_debug_draw_text(gctx->font, gctx->temp_arena, gctx->cmd_list_ref, viewport, clip_rect, s_without_doublehash, baseline, font_scale, c, false);
 }
 
 

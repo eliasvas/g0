@@ -6,16 +6,14 @@
 void game_init(Game_State *gs) {
   ogl_init(); // To create the bullshit empty VAO opengl side, nothing else
 
+  // Should these (for now) happen in platform.h?
   gs->red = ogl_tex_make((u8[]){250,90,72,255}, 1,1, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT});
-
   Platform_Image_Data image = platform_load_image_bytes_as_rgba("data/microgue.png");
   assert(image.width > 0);
   assert(image.height > 0);
   assert(image.data != nullptr);
   gs->atlas = ogl_tex_make(image.data, image.width, image.height, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT});
   gs->font = font_util_load_default_atlas(gs->frame_arena, 64, 1024, 1024);
-
-
   gs->fill_effect = effect_make(EFFECT_KIND_FILL);
   gs->vortex_effect = effect_make(EFFECT_KIND_VORTEX);
 
@@ -103,58 +101,59 @@ void game_update(Game_State *gs, float dt) {
 }
 
 void game_render(Game_State *gs, float dt) {
-  ogl_clear(col(0.0,0.0,0.0,1.0));
 
 #define ATLAS_SPRITES_X 16
 #define ATLAS_SPRITES_Y 10
-  R2D* fs_rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, }, gs->game_viewport, gs->game_viewport);
-  r2d_push_quad(fs_rend, (R2D_Quad) {
+  // Draw background atlas
+  R2D_Cmd cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_VIEWPORT, .r = gs->game_viewport };
+  r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
+  cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_SCISSOR, .r = gs->game_viewport };
+  r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
+  cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_CAMERA, .c = (R2D_Cam){ .offset = v2m(0, 0), .origin = v2m(0,0), .zoom = 1.0, .rot_deg = 0.0, } };
+  r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
+  R2D_Quad quad = (R2D_Quad) {
       .src_rect = rec(0,0,128,80),
       .dst_rect = rec(0,0,gs->game_viewport.w,gs->game_viewport.h),
       .c = col(1,1,1,1),
       .tex = gs->atlas,
-  });
-  r2d_end(fs_rend);
-
-  // Effect Testing too :)
-  /*
-  Effect_Data vortex_data = {
-    .screen_dim = v2m(gs->game_viewport.w, gs->game_viewport.h),
-    .time_sec = platform_get_time(),
-    .framerate = 1.0f/dt,
-    .param0 = v4m(0.8,0,0,0), // param0.x is alpha currently
   };
-  effect_render(&gs->vortex_effect, &vortex_data, gs->screen_dim, gs->game_viewport);
-  */
+  cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_ADD_QUAD, .q = quad };
+  r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
 
+
+  // Draw Hero_Bg in middle
   float speedup = 3.0;
   f64 ts = platform_get_time()*speedup;
-  R2D* rend = r2d_begin(gs->frame_arena, &(R2D_Cam){ .offset = v2m(gs->game_viewport.w/2.0, gs->game_viewport.h/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,}, gs->game_viewport, gs->game_viewport);
-
-  r2d_push_quad(rend, (R2D_Quad) {
+  cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_CAMERA, .c = (R2D_Cam){ .offset = v2m(gs->game_viewport.w/2.0, gs->game_viewport.h/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,} };
+  r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
+  R2D_Quad hero_bg = (R2D_Quad) {
       .src_rect = rec(0,0,0,0),
       .dst_rect = rec(0,0,10,10),
       .c = col(1,1,1,0.8),
       .tex = gs->red,
       .rot_deg = ts,
-  });
+  };
+  cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_ADD_QUAD, .q = hero_bg };
+  r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
 
-  // ULTRA HACKY WE SET THE IMAGE MANUALLY
+  // Draw Hero in middle
   u32 tc = gs->vns.active_dialog.img_idx;
-
   u32 xidx = (u32)tc % ATLAS_SPRITES_X;
   u32 yidx = (u32)tc / ATLAS_SPRITES_X;
-  r2d_push_quad(rend, (R2D_Quad) {
+  R2D_Quad hero = (R2D_Quad) {
       .src_rect = rec(xidx*8, yidx*8, 8, 8),
       .dst_rect = rec(1,1,8,8),
       .c = col(1,1,1,1),
       .tex = gs->atlas,
       .rot_deg = ts,
-  });
-  r2d_end(rend);
+  };
+  cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_ADD_QUAD, .q = hero };
+  r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
 
 
-  gui_frame_begin(gs->screen_dim, &gs->input, dt);
+
+
+  gui_frame_begin(gs->screen_dim, &gs->input, &gs->cmd_list, dt);
 
   /*
   gui_push_font_scale(0.25);
@@ -227,22 +226,6 @@ void game_render(Game_State *gs, float dt) {
   vn_simulate(&gs->vns, gs->screen_dim, dt);
 
   gui_frame_end();
-  /*
-  // Effect Testing
-  Effect_Data fill_data = {
-    .viewport = gs->game_viewport,
-    .time_sec = platform_get_time(),
-    .framerate = 1.0f/dt,
-    .param0 = v4m(0.1,0.1,0.9,0.1),
-    .param1 = v4m(1,1,1,1),
-  };
-  effect_render(&gs->fill_effect, &fill_data);
-  */
-}
 
-// Every node can have some of the following
-// - ID: The node ID
-// - Effect: An Effect for all gameplay screen (like blur/fill whatever)
-// - Dialog: A piece of text along with a Name
-// - Choices: An array of on-screen choices, when one is clicked, the scene finishes
-// - Static: Will just finish in duration and go to next
+
+}

@@ -26,6 +26,7 @@ INLINE f32 v2_dot(v2 a, v2 b)          { return (a.x*b.x)+(a.y*b.y); }
 INLINE f32 v2_len(v2 a)                { return sqrtf(v2_dot(a,a)); }
 INLINE v2  v2_norm(v2 a)               { f32 vl=v2_len(a);return v2_divf(a,vl); }
 INLINE v2  v2_rot(v2 a, f32 angle_rad) { return v2m(a.x*cos(angle_rad)-a.y*sin(angle_rad), a.x*sin(angle_rad)+a.y*cos(angle_rad)); }
+INLINE b32 v2_eq(v2 a, v2 b)           { return (equalf(a.x,b.x,0.001) && equalf(a.y,b.y,0.001)); }
 
 typedef union v3
 {
@@ -46,6 +47,7 @@ INLINE f32 v3_dot(v3 a, v3 b)         { return (a.x*b.x)+(a.y*b.y)+(a.z*b.z); }
 INLINE f32 v3_len(v3 a)               { return sqrtf(v3_dot(a,a)); }
 INLINE v3  v3_norm(v3 a)              { f32 vl=v3_len(a);assert(!equalf(vl,0.0,0.01));return v3_divf(a,vl); }
 INLINE v3  v3_cross(v3 a,v3 b)        { v3 res; res.x=(a.y*b.z)-(a.z*b.y); res.y=(a.z*b.x)-(a.x*b.z); res.z=(a.x*b.y)-(a.y*b.x); return (res); }
+INLINE b32 v3_eq(v3 a, v3 b)          { return (equalf(a.x,b.x,0.001) && equalf(a.y,b.y,0.001) && equalf(a.z,b.z,0.001)); }
 
 typedef union v4
 {
@@ -61,11 +63,11 @@ INLINE v4 v4_mult(v4 a, v4 b)             { return v4m(a.x*b.x,a.y*b.y,a.z*b.z,a
 INLINE v4 v4_multf(v4 a, f32 b)           { return v4m(a.x*b,a.y*b,a.z*b,a.w*b); }
 INLINE v4 v4_div(v4 a, v4 b)              { return v4m(a.x/b.x,a.y/b.y,a.z/b.z,a.w/b.w); }
 INLINE v4 v4_divf(v4 a, f32 b)            { return v4m(a.x/b,a.y/b,a.z/b,a.w/b); }
-
-INLINE v4   v4_lerp(v4 a, v4 b, f32 x) { return v4m(a.x*(1.0-x) + b.x*x,a.y*(1.0-x) + b.y*x,a.z*(1.0-x)+b.z*x,a.w*(1.0-x)+b.w*x); }
-INLINE f32  v4_dot(v4 a, v4 b)         { return (a.x*b.x)+(a.y*b.y)+(a.z*b.z)+(a.w*b.w); }
-INLINE f32  v4_len(v4 a)               { return sqrtf(v4_dot(a,a)); }
-INLINE v4   v4_norm(v4 a)              { f32 vl=v4_len(a);assert(!equalf(vl,0.0,0.01));return v4_divf(a,vl); }
+INLINE v4  v4_lerp(v4 a, v4 b, f32 x)     { return v4m(a.x*(1.0-x) + b.x*x,a.y*(1.0-x) + b.y*x,a.z*(1.0-x)+b.z*x,a.w*(1.0-x)+b.w*x); }
+INLINE f32 v4_dot(v4 a, v4 b)             { return (a.x*b.x)+(a.y*b.y)+(a.z*b.z)+(a.w*b.w); }
+INLINE f32 v4_len(v4 a)                   { return sqrtf(v4_dot(a,a)); }
+INLINE v4  v4_norm(v4 a)                  { f32 vl=v4_len(a);assert(!equalf(vl,0.0,0.01));return v4_divf(a,vl); }
+INLINE b32 v4_eq(v4 a, v4 b)              { return (equalf(a.x,b.x,0.001) && equalf(a.y,b.y,0.001) && equalf(a.z,b.z,0.001) && equalf(a.w,b.w,0.001)); }
 
 typedef union {
     f32 col[3][3];//{x.x,x.y,x.z,0,y.x,y.y,y.z,0,z.x,z.y,z.z,0,p.x,p.y,p.z,1}
@@ -306,5 +308,7 @@ static rect rect_fit_inside(rect src, rect dest, Rect_Fit_Mode mode) {
     .h = src.h,
   };
 }
+
+static bool rect_equals(rect l, rect r) { return (equalf(l.x,r.x,0.01) && equalf(l.y,r.y,0.01) && equalf(l.w,r.w,0.01) && equalf(l.h,r.h,0.01)); }
 
 #endif

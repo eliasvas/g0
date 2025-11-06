@@ -108,6 +108,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   sdl_state->gs.persistent_arena = arena_make(GB(1));
   sdl_state->gs.frame_arena = arena_make(MB(256));
   sdl_state->gs.screen_dim = v2m(DEFAULT_WIN_DIM_X, DEFAULT_WIN_DIM_Y);
+  r2d_clear_cmds(&sdl_state->gs.cmd_list);
   game_init(&sdl_state->gs);
 
   return SDL_APP_CONTINUE;
@@ -163,8 +164,12 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   arena_clear(sdl_state->gs.frame_arena);
 
   // Perform update and render
+  ogl_clear(col(0.0,0.0,0.0,1.0));
   game_update(&sdl_state->gs, sdl_state->dt);
   game_render(&sdl_state->gs, sdl_state->dt);
+
+  // Do platform-side rendering of given commands, with r2d_begin/end + ogl
+  r2d_render_cmds(sdl_state->gs.frame_arena, &sdl_state->gs.cmd_list);
 
   // Swap the window
   {

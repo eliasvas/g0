@@ -1,6 +1,6 @@
 PKGS="sdl3 glew"
 CFLAGS="-Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wswitch-enum \
-  -pedantic -fno-exceptions -g -fsanitize=address"
+  -pedantic -fno-exceptions -fstack-protector -g -fsanitize=address"
 CC="clang"
 
 rm -rf build
