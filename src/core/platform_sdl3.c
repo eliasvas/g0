@@ -25,6 +25,15 @@
 #define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL_main.h>
 
+//f64 platform_get_time();
+typedef struct {
+  u8 *data;
+  u64 width;
+  u64 height;
+} Platform_Image_Data;
+Platform_Image_Data platform_load_image_bytes_as_rgba(const char *filepath);
+
+
 Platform_Image_Data platform_load_image_bytes_as_rgba(const char *filepath) {
   Platform_Image_Data img_data = {};
 
@@ -48,6 +57,19 @@ typedef struct {
 
   Game_State gs;
 } SDL_State;
+
+
+u64 platform_read_cpu_timer() {
+  return SDL_GetPerformanceCounter();
+}
+
+u64 platform_read_cpu_freq() {
+  return SDL_GetPerformanceFrequency();
+}
+
+f64 platform_get_time() {
+  return (f64)SDL_GetTicksNS() / 1000000000.0;
+}
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   TIME_FUNC;
@@ -109,6 +131,25 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   sdl_state->gs.frame_arena = arena_make(MB(256));
   sdl_state->gs.screen_dim = v2m(DEFAULT_WIN_DIM_X, DEFAULT_WIN_DIM_Y);
   r2d_clear_cmds(&sdl_state->gs.cmd_list);
+
+
+
+  // IMPORTANT:
+  // These are used by the game, loaded in platform code for now.
+  // When we implement actual Asset/Resource system this will change.. I hope!
+  ogl_init(); // To create the bullshit empty VAO opengl side, nothing else
+  Game_State *gs = &sdl_state->gs;
+  gs->red = ogl_tex_make((u8[]){250,90,72,255}, 1,1, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT});
+  Platform_Image_Data image = platform_load_image_bytes_as_rgba("data/microgue.png");
+  assert(image.width > 0);
+  assert(image.height > 0);
+  assert(image.data != nullptr);
+  gs->atlas = ogl_tex_make(image.data, image.width, image.height, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT});
+  gs->font = font_util_load_default_atlas(gs->frame_arena, 64, 1024, 1024);
+  gs->fill_effect = effect_make(EFFECT_KIND_FILL);
+  gs->vortex_effect = effect_make(EFFECT_KIND_VORTEX);
+
+
   game_init(&sdl_state->gs);
 
   return SDL_APP_CONTINUE;
@@ -165,6 +206,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
   // Perform update and render
   ogl_clear(col(0.0,0.0,0.0,1.0));
+  sdl_state->gs.time_sec = platform_get_time();
   game_update(&sdl_state->gs, sdl_state->dt);
   game_render(&sdl_state->gs, sdl_state->dt);
 
@@ -198,14 +240,3 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result) {
   SDL_Quit();
 }
 
-u64 platform_read_cpu_timer() {
-  return SDL_GetPerformanceCounter();
-}
-
-u64 platform_read_cpu_freq() {
-  return SDL_GetPerformanceFrequency();
-}
-
-f64 platform_get_time() {
-  return (f64)SDL_GetTicksNS() / 1000000000.0;
-}

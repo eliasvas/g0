@@ -32,3 +32,21 @@ cd build
 python -m http.server
 ->localhost:8000 in your browser
 ```
+
+## Module Architecture
+```mermaid
+flowchart LR
+    base["base"] --> core["core"] & game["game"] & gui["gui"]
+    gui --> game
+    game -.-> core
+
+    base:::baseStyle
+    core:::coreStyle
+    game:::gameStyle
+    gui:::guiStyle
+
+    classDef baseStyle fill:#522546,stroke:#333,stroke-width:2px,color:#E0E0E0
+    classDef gameStyle fill:#F7374F,stroke:#333,stroke-width:2px,color:#E0E0E0
+    classDef coreStyle fill:#88304E,stroke:#333,stroke-width:2px,color:#E0E0E0
+    classDef guiStyle fill:#2C2C2C,stroke:#333,stroke-width:2px,color:#E0E0E0
+```

@@ -107,7 +107,7 @@ void vn_simulate(VN_System *vns, v2 screen_dim, f64 dt) {
     Effect_Data ed = {
       //.screen_dim = v2m(v.w, v.h),
       .screen_dim = screen_dim,
-      .time_sec = platform_get_time(),
+      //.time_sec = platform_get_time(),
       .framerate = 1.0f/dt,
       .param0 = vns->active_effect.param0,
       .param1 = vns->active_effect.param1,

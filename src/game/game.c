@@ -1,22 +1,7 @@
 #include "game.h"
 #include "gui/gui.h"
 
-//struct platform_api { f64 (*get_time)(); };
-
 void game_init(Game_State *gs) {
-  ogl_init(); // To create the bullshit empty VAO opengl side, nothing else
-
-  // Should these (for now) happen in platform.h?
-  gs->red = ogl_tex_make((u8[]){250,90,72,255}, 1,1, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT});
-  Platform_Image_Data image = platform_load_image_bytes_as_rgba("data/microgue.png");
-  assert(image.width > 0);
-  assert(image.height > 0);
-  assert(image.data != nullptr);
-  gs->atlas = ogl_tex_make(image.data, image.width, image.height, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT});
-  gs->font = font_util_load_default_atlas(gs->frame_arena, 64, 1024, 1024);
-  gs->fill_effect = effect_make(EFFECT_KIND_FILL);
-  gs->vortex_effect = effect_make(EFFECT_KIND_VORTEX);
-
   // Gui Stuff
   gui_context_init(gs->frame_arena, &gs->font);
   // DUMMY gui panel hierarchy for testing
@@ -123,7 +108,7 @@ void game_render(Game_State *gs, float dt) {
 
   // Draw Hero_Bg in middle
   float speedup = 3.0;
-  f64 ts = platform_get_time()*speedup;
+  f64 ts = gs->time_sec * speedup;
   cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_CAMERA, .c = (R2D_Cam){ .offset = v2m(gs->game_viewport.w/2.0, gs->game_viewport.h/2.0), .origin = v2m(5,5), .zoom = 30.0, .rot_deg = -ts,} };
   r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
   R2D_Quad hero_bg = (R2D_Quad) {

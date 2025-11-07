@@ -9,11 +9,23 @@ mkdir -p build
 export ASAN_OPTIONS=detect_stack_use_after_return=1
 export LSAN_OPTIONS=suppressions=lsan_ignore.txt
 
-$CC $CFLAGS -O0 -std=gnu23 `pkg-config --cflags $PKGS` -Iext -Isrc \
-src/base/*.c src/core/*.c src/game/*.c src/gui/*.c -o build/g0 `pkg-config --libs $PKGS` -lm
+# Build the game dynamic library
+$CC $CFLAGS -O0 -std=gnu23 -Iext -Isrc -fPIC -shared \
+src/game/*.c src/gui/*.c -o build/libgame.so
 
 if [ $? -eq 0 ]; then
-    echo "✅ Build succeeded."
+    echo "✅ Game Build succeeded."
 else
-    echo "❌ Build failed."
+    echo "❌ Game Build failed."
+fi
+
+# Build the core (engine) executable
+$CC $CFLAGS -O0 -std=gnu23 `pkg-config --cflags $PKGS` -Lbuild \
+-Iext -Isrc src/base/*.c src/core/*.c -o build/g0 \
+`pkg-config --libs $PKGS` -lm -lgame -Wl,-rpath='build/'
+
+if [ $? -eq 0 ]; then
+    echo "✅ Core Build succeeded."
+else
+    echo "❌ Core Build failed."
 fi

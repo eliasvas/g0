@@ -11,6 +11,7 @@ typedef struct {
   rect game_viewport;
   
   // Interface between platform and game
+  f32 time_sec;
   v2 screen_dim;
   Input input;
   R2D_Cmd_Chunk_List cmd_list;
