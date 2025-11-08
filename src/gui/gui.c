@@ -605,7 +605,7 @@ void gui_render_hierarchy(Gui_Box *box) {
   if (box->flags & (GB_FLAG_CLICKABLE|GB_FLAG_VIEW_SCROLL_X|GB_FLAG_VIEW_SCROLL_Y)) {
     for (Gui_Box *parent = box->parent; !gui_box_is_nil(parent); parent = parent->parent) {
       if (parent->flags & GB_FLAG_CLIP) {
-        clip_rect = ogl_to_gl_rect(parent->r, gctx->screen_dim.y);
+        clip_rect = rect_bl_to_tl(parent->r, gctx->screen_dim.y);
         break;
       } 
     }

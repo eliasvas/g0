@@ -11,7 +11,7 @@ export LSAN_OPTIONS=suppressions=lsan_ignore.txt
 
 # Build the game dynamic library
 $CC $CFLAGS -O0 -std=gnu23 -Iext -Isrc -fPIC -shared \
-src/game/*.c src/gui/*.c -o build/libgame.so
+src/core/input.c src/game/*.c src/gui/*.c -o build/game.so
 
 if [ $? -eq 0 ]; then
     echo "✅ Game Build succeeded."
@@ -22,7 +22,7 @@ fi
 # Build the core (engine) executable
 $CC $CFLAGS -O0 -std=gnu23 `pkg-config --cflags $PKGS` -Lbuild \
 -Iext -Isrc src/base/*.c src/core/*.c -o build/g0 \
-`pkg-config --libs $PKGS` -lm -lgame -Wl,-rpath='build/'
+`pkg-config --libs $PKGS` -lm 
 
 if [ $? -eq 0 ]; then
     echo "✅ Core Build succeeded."

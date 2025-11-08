@@ -10,7 +10,7 @@ typedef struct {
   Arena *frame_arena; // For per-frame allocations
   rect game_viewport;
   
-  // Interface between platform and game
+  // Interface between platform <-> game
   f32 time_sec;
   v2 screen_dim;
   Input input;
@@ -27,9 +27,28 @@ typedef struct {
   VN_System vns;
 } Game_State;
 
-// Not sure if these should be exposed as we will load them via DLL in the future
 void game_init(Game_State *gs);
 void game_update(Game_State *gs, f32 dt);
 void game_render(Game_State *gs, f32 dt);
+void game_shutdown(Game_State *gs);
+
+
+
+typedef void (*game_init_fn) (Game_State *gs);
+typedef void (*game_update_fn) (Game_State *gs, f32 dt);
+typedef void (*game_render_fn) (Game_State *gs, f32 dt);
+typedef void (*game_shutdown_fn) (Game_State *gs);
+
+typedef struct {
+  game_init_fn init;
+  game_update_fn update;
+  game_render_fn render;
+  game_shutdown_fn shutdown;
+
+  void *lib;
+  s64 last_modified;
+
+  u64 api_version;
+} Game_Api;
 
 #endif

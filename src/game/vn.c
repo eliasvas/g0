@@ -38,15 +38,17 @@ void vn_extract(VN_System *vns, Json_Element *node) {
     vns->choice_count = itr;
   }
 
-  effect_destroy(&vns->active_effect.e);
+  //effect_destroy(&vns->active_effect.e);
   Json_Element *effect = json_lookup(node, MAKE_STR("Effect"));
   if (effect) {
+    /*
     buf kind = json_lookup(effect, MAKE_STR("kind"))->value;
     if (buf_eq(kind, MAKE_STR("EFFECT_KIND_FILL"))) {
       vns->active_effect.e = effect_make(EFFECT_KIND_FILL);
     } else if (buf_eq(kind, MAKE_STR("EFFECT_KIND_VORTEX"))) {
       vns->active_effect.e = effect_make(EFFECT_KIND_VORTEX);
     }
+    */
     Json_Element *param0 = json_lookup(effect, MAKE_STR("param0"));
     if (param0) {
       param0 = param0->first;
@@ -101,9 +103,9 @@ void vn_simulate(VN_System *vns, v2 screen_dim, f64 dt) {
   assert(!gui_box_is_nil(up_right));
  
   // 1. First render the effect
-  // I don't like this too much, effects kinda suck rn
+  /* 
   if (vns->active_effect.duration > 0 && vns->active_effect.e.kind != EFFECT_KIND_NONE) {
-    rect v = ogl_to_gl_rect(up_right->r, screen_dim.y);
+    rect v = rect_bl_to_tl(up_right->r, screen_dim.y);
     Effect_Data ed = {
       //.screen_dim = v2m(v.w, v.h),
       .screen_dim = screen_dim,
@@ -112,9 +114,10 @@ void vn_simulate(VN_System *vns, v2 screen_dim, f64 dt) {
       .param0 = vns->active_effect.param0,
       .param1 = vns->active_effect.param1,
     };
-    effect_render(&vns->active_effect.e, &ed, screen_dim, v);
+    //effect_render(&vns->active_effect.e, &ed, screen_dim, v);
     vns->active_effect.duration = maximum(0, vns->active_effect.duration - dt);
   }
+  */
 
   // 2. Then render the dialog box
   // Dialog box on down tile of screen

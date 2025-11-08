@@ -16,6 +16,8 @@ extern "C" {
 
 #include <stdio.h>
 
+
+
 typedef enum {
   OGL_PRIM_TYPE_POINT,
   OGL_PRIM_TYPE_LINE,
@@ -201,7 +203,7 @@ typedef struct {
   extern void ogl_render_target_deinit(Ogl_Render_Target *rt);
 
   // TODO: remove this!
-  extern rect ogl_to_gl_rect(rect r, f32 screen_height);
+  //extern rect ogl_to_gl_rect(rect r, f32 screen_height);
 #else
 
 // This is complete bullshit, WHY do I need to make a vao at startup on MODERN opengl??????
@@ -280,12 +282,6 @@ void ogl_buf_deinit(Ogl_Buf *buf) {
     glDeleteBuffers(1, &buf->impl_state);
   }
 }
-
-// Used for viewports/scissors currently, TODO: remove this..
-rect ogl_to_gl_rect(rect r, f32 screen_height) {
-  return rec(r.x, screen_height - r.y - r.h, r.w, r.h);
-}
-
 static uint32_t ogl_data_get_count(Ogl_Data_Type type) {
   switch (type) {
     case OGL_DATA_TYPE_UNKNOWN: return 0;

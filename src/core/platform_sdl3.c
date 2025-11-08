@@ -12,9 +12,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
-//#define STB_SPRINTF_IMPLEMENTATION
-//#include <stb/stb_sprintf.h>
-
 #include <GL/glew.h>
 #define OGL_IMPLEMENTATION
 #include "ogl.h"
@@ -24,6 +21,15 @@
 // we need this to port to WASM sadly, because WASM programs are event based, no main loops :(
 #define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL_main.h>
+
+// Hack :)
+#if OS_WINDOWS
+  #define GAME_DLL "game.dll"
+#else
+  #define GAME_DLL "game.so"
+#endif
+
+static Game_Api game_api = {};
 
 //f64 platform_get_time();
 typedef struct {
@@ -69,6 +75,46 @@ u64 platform_read_cpu_freq() {
 
 f64 platform_get_time() {
   return (f64)SDL_GetTicksNS() / 1000000000.0;
+}
+
+bool platform_try_load_game_api(Game_Api *prev) {
+  // 1. Find dynlib path 
+  char dll_name[1024];
+  sprintf(dll_name, "%s/%s", SDL_GetBasePath(), GAME_DLL);
+
+  // 2. Get its last_modified time 
+  SDL_PathInfo pinfo = {};
+  if (!SDL_GetPathInfo(dll_name, &pinfo)) return false;
+
+  // 3. Copy library to game_{ver} for hot-reload to work
+  char dll_ver_name[1024];
+  game_api.api_version += 1;
+  sprintf(dll_ver_name, "%s/%s%lu%s", SDL_GetBasePath(), "game_",game_api.api_version,".so");
+  if (!SDL_CopyFile(dll_name, dll_ver_name)) return false;
+
+  // 4. Load the library
+  SDL_SharedObject *game_dll = SDL_LoadObject(dll_ver_name);
+  if (!game_dll) return false;
+
+  // 5. Fill the Game_Api struct
+  game_api.init = (game_init_fn)SDL_LoadFunction(game_dll, "game_init");
+  game_api.update = (game_update_fn)SDL_LoadFunction(game_dll, "game_update");
+  game_api.render = (game_render_fn)SDL_LoadFunction(game_dll, "game_render");
+  game_api.shutdown = (game_shutdown_fn)SDL_LoadFunction(game_dll, "game_shutdown");
+  game_api.lib = game_dll;
+  game_api.last_modified = pinfo.modify_time;
+  if (!game_api.init || !game_api.update || !game_api.render || !game_api.shutdown) return false;
+
+  return true;
+}
+void platform_unload_game_api(Game_Api *api) {
+  // 1. delete the Library
+  if (api->lib) {
+    SDL_UnloadObject(api->lib);
+    api->lib = nullptr;
+  }
+  // 2. delete the game_{ver}.so file (optional)
+ 
 }
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
@@ -132,8 +178,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   sdl_state->gs.screen_dim = v2m(DEFAULT_WIN_DIM_X, DEFAULT_WIN_DIM_Y);
   r2d_clear_cmds(&sdl_state->gs.cmd_list);
 
-
-
   // IMPORTANT:
   // These are used by the game, loaded in platform code for now.
   // When we implement actual Asset/Resource system this will change.. I hope!
@@ -145,12 +189,25 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   assert(image.height > 0);
   assert(image.data != nullptr);
   gs->atlas = ogl_tex_make(image.data, image.width, image.height, OGL_TEX_FORMAT_RGBA8U, (Ogl_Tex_Params){.wrap_s = OGL_TEX_WRAP_MODE_REPEAT, .wrap_t = OGL_TEX_WRAP_MODE_REPEAT});
-  gs->font = font_util_load_default_atlas(gs->frame_arena, 64, 1024, 1024);
+  gs->font = font_util_load_default_atlas(gs->persistent_arena, 64, 1024, 1024);
   gs->fill_effect = effect_make(EFFECT_KIND_FILL);
   gs->vortex_effect = effect_make(EFFECT_KIND_VORTEX);
 
 
-  game_init(&sdl_state->gs);
+#if (ARCH_WASM64 || ARCH_WASM32)
+  // On WASM we just load the functions..
+  game_api.init = game_init;
+  game_api.update = game_update;
+  game_api.render = game_render;
+  game_api.shutdown = game_shutdown;
+#else
+  if (!platform_try_load_game_api(&game_api)){
+    printf("libgame failed to load err:[%s] - exiting!", SDL_GetError());
+    return SDL_APP_SUCCESS;
+  }
+#endif
+
+  game_api.init(&sdl_state->gs);
 
   return SDL_APP_CONTINUE;
 }
@@ -207,8 +264,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   // Perform update and render
   ogl_clear(col(0.0,0.0,0.0,1.0));
   sdl_state->gs.time_sec = platform_get_time();
-  game_update(&sdl_state->gs, sdl_state->dt);
-  game_render(&sdl_state->gs, sdl_state->dt);
+
+  game_api.update(&sdl_state->gs, sdl_state->dt);
+  game_api.render(&sdl_state->gs, sdl_state->dt);
 
   // Do platform-side rendering of given commands, with r2d_begin/end + ogl
   r2d_render_cmds(sdl_state->gs.frame_arena, &sdl_state->gs.cmd_list);
@@ -218,19 +276,38 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     TIME_BLOCK("Swap Window");
     SDL_GL_SwapWindow(sdl_state->window);
   }
-  
+ 
+
+#if !(ARCH_WASM64 || ARCH_WASM32)
+  // Perform a reload if necessary
+  char dll_name[1024];
+  sprintf(dll_name, "%s/%s", SDL_GetBasePath(), GAME_DLL);
+  SDL_PathInfo pinfo = {};
+  SDL_GetPathInfo(dll_name, &pinfo);
+  if (input_key_pressed(&sdl_state->gs.input, KEY_SCANCODE_R) || game_api.last_modified != pinfo.modify_time) {
+    SDL_Delay(500);
+    SDL_Log("Performing Reload");
+    game_api.shutdown(&sdl_state->gs);
+    platform_unload_game_api(&game_api);
+    assert(platform_try_load_game_api(&game_api));
+    //arena_clear(sdl_state->gs.persistent_arena); // optional 
+    game_api.init(&sdl_state->gs);
+  }
+#endif
+
+ 
   // Perform timings (Should this happen before swap window maybe?)
   u64 frame_end = SDL_GetTicksNS();
   sdl_state->dt = (frame_end - sdl_state->frame_start) / 1000000000.0;
   //printf("fps=%f begin=%f end=%f\n", 1.0/sdl_state->dt, (f32)sdl_state->frame_start, (f32)frame_end);
   sdl_state->frame_start = SDL_GetTicksNS();
 
-
   input_end_frame(&sdl_state->gs.input);
   return SDL_APP_CONTINUE;
 }
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
+  platform_unload_game_api(&game_api); // Is this needed though? maybe for a game_api.shutdown(..) save?
   profiler_end_and_print();
 
   SDL_State *sdl_state = (SDL_State*)appstate;

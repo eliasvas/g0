@@ -310,5 +310,7 @@ static rect rect_fit_inside(rect src, rect dest, Rect_Fit_Mode mode) {
 }
 
 static bool rect_equals(rect l, rect r) { return (equalf(l.x,r.x,0.01) && equalf(l.y,r.y,0.01) && equalf(l.w,r.w,0.01) && equalf(l.h,r.h,0.01)); }
+static rect rect_bl_to_tl(rect r, f32 screen_height) { return rec(r.x, screen_height - r.y - r.h, r.w, r.h); }
+
 
 #endif

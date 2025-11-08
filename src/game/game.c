@@ -4,7 +4,9 @@
 void game_init(Game_State *gs) {
   // Gui Stuff
   gui_context_init(gs->frame_arena, &gs->font);
+
   // DUMMY gui panel hierarchy for testing
+  // TODO: If we do gui panel stuff in 'game_reload' we can have run-time hot-reloading ?
   Gui_Panel *p_up = arena_push_array(gui_get_ctx()->persistent_arena, Gui_Panel, 1);
   p_up->label = MAKE_STR("p_up");
   p_up->parent_pct = 0.7;
@@ -81,7 +83,7 @@ void game_update(Game_State *gs, float dt) {
   Gui_Box *up_right = gui_box_lookup_from_key(0, gui_key_from_str(MAKE_STR("panel_p_up_right")));
   if (!gui_box_is_nil(up_right)) {
     rect r = up_right->r; 
-    gs->game_viewport = ogl_to_gl_rect(r, gs->screen_dim.y);
+    gs->game_viewport = rect_bl_to_tl(r, gs->screen_dim.y);
   }
 }
 
@@ -104,7 +106,6 @@ void game_render(Game_State *gs, float dt) {
   };
   cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_ADD_QUAD, .q = quad };
   r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
-
 
   // Draw Hero_Bg in middle
   float speedup = 3.0;
@@ -213,4 +214,8 @@ void game_render(Game_State *gs, float dt) {
   gui_frame_end();
 
 
+}
+
+void game_shutdown(Game_State *gs) {
+  // TBA
 }
