@@ -16,8 +16,6 @@ extern "C" {
 
 #include <stdio.h>
 
-
-
 typedef enum {
   OGL_PRIM_TYPE_POINT,
   OGL_PRIM_TYPE_LINE,

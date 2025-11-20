@@ -32,8 +32,6 @@ void game_update(Game_State *gs, f32 dt);
 void game_render(Game_State *gs, f32 dt);
 void game_shutdown(Game_State *gs);
 
-
-
 typedef void (*game_init_fn) (Game_State *gs);
 typedef void (*game_update_fn) (Game_State *gs, f32 dt);
 typedef void (*game_render_fn) (Game_State *gs, f32 dt);
