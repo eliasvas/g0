@@ -1,5 +1,5 @@
-- Screen Shake / Screen Blur / Screen Pixelification (More Effects)
 - Entity/World representation
 - Audio mixer (based on SDL_Audio, no SDL_Mixer)
-
-- GUI system
+- Make GUI like old Nintendo DS style, meaning color interpolation, cmooth buttons with shadows
+- Make camera better (screen-shake, split screen and stuff)
+- TWEENS!

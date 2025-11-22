@@ -1,6 +1,7 @@
 #ifndef _GAME_H__
 #define _GAME_H__
 
+#include "vn.h"
 #include "base/base_inc.h"
 #include "core/core_inc.h"
 
@@ -22,6 +23,8 @@ typedef struct {
   Effect fill_effect;
   Effect vortex_effect;
 
+  // Why is this here
+  VN_System vns;
 } Game_State;
 
 void game_init(Game_State *gs);
