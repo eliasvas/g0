@@ -192,6 +192,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   gs->font = font_util_load_default_atlas(gs->persistent_arena, 64, 1024, 1024);
   gs->fill_effect = effect_make(EFFECT_KIND_FILL);
   gs->vortex_effect = effect_make(EFFECT_KIND_VORTEX);
+  stbi_image_free(image.data);
 
 
 #if (ARCH_WASM64 || ARCH_WASM32)

@@ -1,6 +1,7 @@
 #include "game.h"
 #include "gui/gui.h"
 
+// TODO: screen->world and world->screen with camera, so we can spawn at edges of camera entities
 #define ATLAS_SPRITES_X 16
 #define ATLAS_SPRITES_Y 10
 void game_push_atlas_rect(Game_State *gs, u32 atlas_idx, rect r) {
@@ -23,7 +24,7 @@ void game_push_atlas_rect_at(Game_State *gs, u32 atlas_idx, v2 pos) {
 
 
 void game_init(Game_State *gs) {
-  //gui_context_init(gs->frame_arena, &gs->font);
+  gui_context_init(gs->frame_arena, &gs->font);
 }
 
 void game_update(Game_State *gs, float dt) {
@@ -40,17 +41,28 @@ void game_render(Game_State *gs, float dt) {
   cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_CAMERA, .c = (R2D_Cam){ .offset = v2m(gs->game_viewport.w/2.0, gs->game_viewport.h/2.0), .origin = v2m(0,0), .zoom = 10.0, .rot_deg = 0} };
   r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
  
-  f32 hero_speed = 50.0;
-  static v2 pos;
-  if (input_key_down(&gs->input, KEY_SCANCODE_UP))pos.y-=hero_speed*dt;
-  if (input_key_down(&gs->input, KEY_SCANCODE_DOWN))pos.y+=hero_speed*dt;
-  if (input_key_down(&gs->input, KEY_SCANCODE_LEFT))pos.x-=hero_speed*dt;
-  if (input_key_down(&gs->input, KEY_SCANCODE_RIGHT))pos.x+=hero_speed*dt;
-  game_push_atlas_rect_at(gs, 9, pos);
+  // Draw some sample sprites
+  game_push_atlas_rect_at(gs, 2, v2m(0,0));
+  game_push_atlas_rect_at(gs, 3, v2m(8,3));
+  game_push_atlas_rect_at(gs, 3, v2m(-8,3));
+  game_push_atlas_rect_at(gs, 1, v2m(16,6));
+  game_push_atlas_rect_at(gs, 1, v2m(-16,6));
+
+  // Move + Draw the hero
+  f32 hero_speed = 100.0;
+  static v2 hpos;
+  if (input_key_down(&gs->input, KEY_SCANCODE_UP))hpos.y-=hero_speed*dt;
+  if (input_key_down(&gs->input, KEY_SCANCODE_DOWN))hpos.y+=hero_speed*dt;
+  if (input_key_down(&gs->input, KEY_SCANCODE_LEFT))hpos.x-=hero_speed*dt;
+  if (input_key_down(&gs->input, KEY_SCANCODE_RIGHT))hpos.x+=hero_speed*dt;
+  game_push_atlas_rect_at(gs, 9, hpos);
 
   // In the end, perform a UI pass (TBA)
-  //gui_frame_begin(gs->screen_dim, &gs->input, &gs->cmd_list, dt);
-  //gui_frame_end();
+  gui_frame_begin(gs->screen_dim, &gs->input, &gs->cmd_list, dt);
+  gui_set_next_bg_color(col(0.1, 0.2, 0.4, 0.5));
+  Gui_Signal bs = gui_button(MAKE_STR("Exit"));
+  if (bs.flags & GUI_SIGNAL_FLAG_LMB_PRESSED)printf("Exit pressed!\n");
+  gui_frame_end();
 }
 
 void game_shutdown(Game_State *gs) { }

@@ -9,7 +9,7 @@ git lfs install
 ## Cloning
 This repo uses git LFS for assets and a submodule for stb libraries, you can:
 ```bash
-git clone --recursive https://github.com/eliasvas/g0
+git clone --recursive https://github.com/eliasvas/game0
 ```
 ## Building
 ### Linux
@@ -21,7 +21,7 @@ git clone --recursive https://github.com/eliasvas/g0
 # add these to your .vimrc
 nnoremap <F7> :!./build.sh<CR>
 nnoremap <F6> :!gf2<CR>
-nnoremap <F5> :!bash -c 'source ./build.sh && ./build/g0'<CR>
+nnoremap <F5> :!bash -c 'source ./build.sh && ./build/game0'<CR>
 
 ```
 ### Web (From Linux)
