@@ -21,7 +21,7 @@ fi
 
 # Build the core (engine) executable
 $CC $CFLAGS -O0 -std=gnu23 `pkg-config --cflags $PKGS` -Lbuild \
--Iext -Isrc src/base/*.c src/core/*.c -o build/game0 \
+-Iext -Isrc src/base/*.c src/core/*.c -o build/prototype \
 `pkg-config --libs $PKGS` -lm 
 
 if [ $? -eq 0 ]; then

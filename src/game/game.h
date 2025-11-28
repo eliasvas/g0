@@ -15,6 +15,9 @@ typedef struct {
   Input input;
   R2D_Cmd_Chunk_List cmd_list;
 
+  // Game specific stuff
+  v2 player_pos;
+  
   // Loaded Asset resources (TODO: Asset system)
   Ogl_Tex atlas;
   Ogl_Tex red;
