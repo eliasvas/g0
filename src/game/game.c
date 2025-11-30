@@ -6,6 +6,28 @@
 #define ATLAS_SPRITES_Y 10
 #define TILE_W 8
 #define TILE_H 8
+
+u32 get_tilemap_value_nocheck(Tile_Map *tm, iv2 tile_coords) {
+  return tm->tiles[tile_coords.x + tm->tile_count.x*tile_coords.y];
+}
+
+b32 is_tilemap_point_empty(Tile_Map *tm, v2 test_point) {
+  b32 empty = false;
+  iv2 tile_pos = (iv2){
+      .x = ((s32)(test_point.x - tm->upper_left_coords.x)) / TILE_W,
+      .y = ((s32)(test_point.y - tm->upper_left_coords.y)) / TILE_H,
+  };
+
+  if ((tile_pos.x >=0) && (tile_pos.x < tm->tile_count.x) && 
+      (tile_pos.y >= 0) && (tile_pos.y < tm->tile_count.y)) {
+    u32 tm_value = get_tilemap_value_nocheck(tm, tile_pos);
+    empty = (tm_value == 0);
+  } 
+
+  return empty;
+}
+
+
 void game_push_atlas_rect(Game_State *gs, u32 atlas_idx, rect r) {
   u32 xidx = (u32)atlas_idx % ATLAS_SPRITES_X;
   u32 yidx = (u32)atlas_idx / ATLAS_SPRITES_X;
@@ -24,9 +46,53 @@ void game_push_atlas_rect_at(Game_State *gs, u32 atlas_idx, v2 pos) {
   game_push_atlas_rect(gs, atlas_idx, rec(pos.x-TILE_W/2,pos.y-TILE_H/2,TILE_W,TILE_H));
 }
 
-
 void game_init(Game_State *gs) {
+  // Initialize the gui
   gui_context_init(gs->frame_arena, &gs->font);
+
+  // Initialize the player
+  gs->player_pos = v2m(5*TILE_W,3*TILE_H);
+
+  // Initialize the world
+  static u32 tilemap00[9][17] = {
+    {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
+    {1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
+    {1, 1, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 1, 0, 1},
+    {1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 1},
+    {0, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 0},
+    {1, 1, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 1, 0, 0, 1},
+    {1, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0, 1},
+    {1, 1, 1, 1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
+    {0, 0, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
+  };
+
+  static u32 tilemap01[9][17] = {
+    {0, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
+    {0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
+    {0, 1, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 1, 0, 1},
+    {0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 1},
+    {0, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 0},
+    {0, 1, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 1, 0, 0, 1},
+    {0, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0, 1},
+    {1, 1, 1, 1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
+    {0, 0, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
+  };
+
+  static Tile_Map maps[2][1] = {};
+ 
+  maps[0][0].upper_left_coords = iv2m(0,0);
+  maps[0][0].tile_count = iv2m(17,9);
+  maps[0][0].tile_dim = iv2m(TILE_W,TILE_H);
+  maps[0][0].tiles = (u32*)tilemap00;
+
+  maps[1][0] = maps[0][0];
+  maps[1][0].tiles = (u32*)tilemap01;
+
+  gs->world = (World) {
+    .tilemap_count = iv2m(2,1),
+    .maps = (Tile_Map*)maps,
+  };
+ 
 }
 
 void game_update(Game_State *gs, float dt) {
@@ -42,46 +108,33 @@ void game_render(Game_State *gs, float dt) {
   //cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_CAMERA, .c = (R2D_Cam){ .offset = v2m(gs->game_viewport.w/2.0, gs->game_viewport.h/2.0), .origin = v2m(0,0), .zoom = 10.0, .rot_deg = 0} };
   cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_CAMERA, .c = (R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 10.0, .rot_deg = 0} };
   r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
- 
-  /*
-  // Draw some sample sprites
-  game_push_atlas_rect_at(gs, 2, v2m(0,0));
-  game_push_atlas_rect_at(gs, 3, v2m(8,3));
-  game_push_atlas_rect_at(gs, 3, v2m(-8,3));
-  game_push_atlas_rect_at(gs, 1, v2m(16,6));
-  game_push_atlas_rect_at(gs, 1, v2m(-16,6));
-  */
 
   // Draw The backgound
-  u32 tilemap[9][17] = {
-    {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
-    {1, 1, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
-    {1, 1, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 1, 0, 1},
-    {1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 1},
-    {0, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 0},
-    {1, 1, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 1, 0, 0, 1},
-    {1, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0, 1},
-    {1, 1, 1, 1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
-    {0, 0, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
-  };
   for (u32 row = 0; row < 9; row+=1) {
     for (u32 col = 0; col < 17; col+=1) {
-      if (tilemap[row][col]) {
-        game_push_atlas_rect(gs, 1, rec(col*TILE_W, row*TILE_H,TILE_W,TILE_H));
-      } else {
+      if (is_tilemap_point_empty(&gs->world.maps[0], v2m(col*TILE_W, row*TILE_H))) {
         game_push_atlas_rect(gs, 69, rec(col*TILE_W, row*TILE_H,TILE_W,TILE_H));
+      } else {
+        game_push_atlas_rect(gs, 1, rec(col*TILE_W, row*TILE_H,TILE_W,TILE_H));
       }
     }
   }
 
   // Move + Draw the hero
+  v2 new_player_pos = gs->player_pos;
   f32 hero_speed = 100.0;
-  if (input_key_down(&gs->input, KEY_SCANCODE_UP))gs->player_pos.y-=hero_speed*dt;
-  if (input_key_down(&gs->input, KEY_SCANCODE_DOWN))gs->player_pos.y+=hero_speed*dt;
-  if (input_key_down(&gs->input, KEY_SCANCODE_LEFT))gs->player_pos.x-=hero_speed*dt;
-  if (input_key_down(&gs->input, KEY_SCANCODE_RIGHT))gs->player_pos.x+=hero_speed*dt;
-  game_push_atlas_rect_at(gs, 9, gs->player_pos);
+  if (input_key_down(&gs->input, KEY_SCANCODE_UP))new_player_pos.y-=hero_speed*dt;
+  if (input_key_down(&gs->input, KEY_SCANCODE_DOWN))new_player_pos.y+=hero_speed*dt;
+  if (input_key_down(&gs->input, KEY_SCANCODE_LEFT))new_player_pos.x-=hero_speed*dt;
+  if (input_key_down(&gs->input, KEY_SCANCODE_RIGHT))new_player_pos.x+=hero_speed*dt;
 
+  v2 left_player_tile = v2m(((new_player_pos.x - TILE_W/2)),(new_player_pos.y + TILE_H/2)); // truncation
+  v2 right_player_tile = v2m(((new_player_pos.x + TILE_W/2)),(new_player_pos.y + TILE_H/2)); // truncation
+                                                      
+  if (is_tilemap_point_empty(&gs->world.maps[0], left_player_tile) && is_tilemap_point_empty(&gs->world.maps[0], right_player_tile)) {
+    gs->player_pos = new_player_pos;
+  }
+  game_push_atlas_rect_at(gs, 9, gs->player_pos);
 
 
   // In the end, perform a UI pass (TBA)

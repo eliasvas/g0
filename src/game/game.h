@@ -4,6 +4,26 @@
 #include "base/base_inc.h"
 #include "core/core_inc.h"
 
+typedef union iv2 {
+    struct { s32 x,y; };
+    struct { s32 u,v; };
+    struct { s32 r,g; };
+    s32 raw[2];
+}iv2;
+static iv2 iv2m(s32 x, s32 y)    { return (iv2){{x, y}}; }
+
+typedef struct {
+  iv2 tile_count; // how many tiles in each axis
+  iv2 tile_dim; // how big each tile is
+  iv2 upper_left_coords;
+  u32 *tiles;
+} Tile_Map;
+
+typedef struct {
+  iv2 tilemap_count;
+  Tile_Map *maps;
+} World;
+
 typedef struct {
   Arena *persistent_arena; // For persistent allocations
   Arena *frame_arena; // For per-frame allocations
@@ -17,6 +37,7 @@ typedef struct {
 
   // Game specific stuff
   v2 player_pos;
+  World world;
   
   // Loaded Asset resources (TODO: Asset system)
   Ogl_Tex atlas;
