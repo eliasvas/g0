@@ -13,14 +13,26 @@ typedef union iv2 {
 static iv2 iv2m(s32 x, s32 y)    { return (iv2){{x, y}}; }
 
 typedef struct {
-  iv2 tile_count; // how many tiles in each axis
-  iv2 tile_dim; // how big each tile is
-  iv2 upper_left_coords;
+  iv2 tilemap_coords; // which tilemap
+  v2 tile_coords; // which tile (+fractional part)
+} Raw_Position;
+
+typedef struct {
+  iv2 tilemap_coords; // which tilemap
+  iv2 tile_coords; // which tile
+  v2 tile_rel_coords; // sub-tile position (fractional)
+} Canonical_Position;
+
+
+typedef struct {
   u32 *tiles;
 } Tile_Map;
 
 typedef struct {
-  iv2 tilemap_count;
+  iv2 tilemap_count; // How many tilemaps are available
+  iv2 tile_dim; // How big each tile in the map is in px
+  iv2 tile_count; // how many tiles in each axis
+
   Tile_Map *maps;
 } World;
 
@@ -36,7 +48,9 @@ typedef struct {
   R2D_Cmd_Chunk_List cmd_list;
 
   // Game specific stuff
-  v2 player_pos;
+  v2 player_pos; // player position.. hm..?
+  v2 player_dim; // player dimensions
+  iv2 player_tilemap; // active tilemap
   World world;
   
   // Loaded Asset resources (TODO: Asset system)

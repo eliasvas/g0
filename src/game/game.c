@@ -1,33 +1,14 @@
 #include "game.h"
 #include "gui/gui.h"
 
+
 // TODO: screen->world and world->screen with camera, so we can spawn at edges of camera entities
-#define ATLAS_SPRITES_X 16
-#define ATLAS_SPRITES_Y 10
 #define TILE_W 8
 #define TILE_H 8
 
-u32 get_tilemap_value_nocheck(Tile_Map *tm, iv2 tile_coords) {
-  return tm->tiles[tile_coords.x + tm->tile_count.x*tile_coords.y];
-}
 
-b32 is_tilemap_point_empty(Tile_Map *tm, v2 test_point) {
-  b32 empty = false;
-  iv2 tile_pos = (iv2){
-      .x = ((s32)(test_point.x - tm->upper_left_coords.x)) / TILE_W,
-      .y = ((s32)(test_point.y - tm->upper_left_coords.y)) / TILE_H,
-  };
-
-  if ((tile_pos.x >=0) && (tile_pos.x < tm->tile_count.x) && 
-      (tile_pos.y >= 0) && (tile_pos.y < tm->tile_count.y)) {
-    u32 tm_value = get_tilemap_value_nocheck(tm, tile_pos);
-    empty = (tm_value == 0);
-  } 
-
-  return empty;
-}
-
-
+#define ATLAS_SPRITES_X 16
+#define ATLAS_SPRITES_Y 10
 void game_push_atlas_rect(Game_State *gs, u32 atlas_idx, rect r) {
   u32 xidx = (u32)atlas_idx % ATLAS_SPRITES_X;
   u32 yidx = (u32)atlas_idx / ATLAS_SPRITES_X;
@@ -46,53 +27,144 @@ void game_push_atlas_rect_at(Game_State *gs, u32 atlas_idx, v2 pos) {
   game_push_atlas_rect(gs, atlas_idx, rec(pos.x-TILE_W/2,pos.y-TILE_H/2,TILE_W,TILE_H));
 }
 
+
+u32 get_tilemap_value_nocheck(World *world, Tile_Map *tm, iv2 tile_coords) {
+  assert(tm);
+  assert((tile_coords.x >= 0) && (tile_coords.x < world->tile_dim.x) &&
+        (tile_coords.y >= 0) && (tile_coords.y < world->tile_dim.y));
+
+  return tm->tiles[tile_coords.x + world->tile_count.x*tile_coords.y];
+}
+
+b32 is_tilemap_point_empty(World *world, Tile_Map *tm, v2 test_point) {
+  b32 empty = false;
+
+  if (tm) {
+    iv2 tile_pos = (iv2){
+      .x = (s32)test_point.x,
+      .y = (s32)test_point.y,
+    };
+
+    if ((tile_pos.x >=0) && (tile_pos.x < world->tile_count.x) && 
+        (tile_pos.y >= 0) && (tile_pos.y < world->tile_count.y)) {
+      u32 tm_value = get_tilemap_value_nocheck(world, tm, tile_pos);
+      empty = (tm_value == 0);
+    } 
+  }
+
+  return empty;
+}
+
+Tile_Map *get_tilemap(World *world, iv2 tilemap_idx) {
+  Tile_Map *tm = nullptr;
+  if ((tilemap_idx.x >= 0) && (tilemap_idx.x < world->tile_dim.x) &&
+        (tilemap_idx.y >= 0) && (tilemap_idx.x < world->tile_dim.y)) {
+    tm = &world->maps[tilemap_idx.x + world->tilemap_count.x * tilemap_idx.y];
+  }
+  return tm;
+}
+
+Canonical_Position get_canonical_position(World *world, Raw_Position pos) {
+  Canonical_Position cpos = {};
+
+  cpos.tile_coords = iv2m((s32)(pos.tile_coords.x), (s32)(pos.tile_coords.y));
+  cpos.tile_rel_coords = v2m(
+      pos.tile_coords.x - cpos.tile_coords.x,
+      pos.tile_coords.y - cpos.tile_coords.y
+  );
+
+  // Transitions happen here
+  cpos.tilemap_coords = pos.tilemap_coords;
+  if (cpos.tile_coords.x >= world->tile_count.x) {
+    cpos.tilemap_coords.x += 1;
+    cpos.tile_coords.x = 0;
+  }
+  if (cpos.tile_coords.x < 0) {
+    cpos.tilemap_coords.x -= 1;
+    cpos.tile_coords.x = world->tile_count.x-1;
+  }
+  if (cpos.tile_coords.y >= world->tile_count.y) {
+    cpos.tilemap_coords.y += 1;
+    cpos.tile_coords.y = 0;
+  }
+  if (cpos.tile_coords.y < 0) {
+    cpos.tilemap_coords.y -= 1;
+    cpos.tile_coords.y = world->tile_count.y-1;
+  }
+
+  return cpos;
+}
+
+b32 is_world_point_empty(World *world, Raw_Position pos) {
+  b32 empty = false;
+
+  Canonical_Position cpos = get_canonical_position(world, pos);
+  Tile_Map *tm = get_tilemap(world, cpos.tilemap_coords);
+  empty = is_tilemap_point_empty(world, tm, v2m(cpos.tile_coords.x, cpos.tile_coords.y));
+
+  return empty;
+}
+
+
 void game_init(Game_State *gs) {
   // Initialize the gui
   gui_context_init(gs->frame_arena, &gs->font);
 
-  // Initialize the player
-  gs->player_pos = v2m(5*TILE_W,3*TILE_H);
-
   // Initialize the world
-  static u32 tilemap00[9][17] = {
-    {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
-    {1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
-    {1, 1, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 1, 0, 1},
-    {1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 1},
-    {0, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 0},
-    {1, 1, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 1, 0, 0, 1},
-    {1, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0, 1},
-    {1, 1, 1, 1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
-    {0, 0, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
+  static u32 tilemap00[6][8] = {
+    {1, 1, 1, 1,  1, 1, 1, 1},
+    {1, 0, 0, 0,  0, 0, 0, 1},
+    {1, 0, 1, 0,  0, 1, 0, 0},
+    {1, 0, 0, 0,  0, 0, 0, 1},
+    {1, 0, 0, 0,  0, 0, 0, 1},
+    {1, 1, 1, 0,  0, 1, 1, 1},
   };
 
-  static u32 tilemap01[9][17] = {
-    {0, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
-    {0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
-    {0, 1, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 1, 0, 1},
-    {0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 1},
-    {0, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 0},
-    {0, 1, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 1, 0, 0, 1},
-    {0, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0, 1},
-    {1, 1, 1, 1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
-    {0, 0, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
+  static u32 tilemap10[6][8] = {
+    {1, 1, 1, 1,  1, 1, 1, 1},
+    {1, 0, 0, 0,  0, 0, 1, 1},
+    {0, 0, 0, 0,  0, 0, 0, 1},
+    {1, 0, 0, 0,  0, 0, 0, 1},
+    {1, 0, 0, 0,  0, 0, 1, 1},
+    {1, 1, 1, 0,  0, 1, 1, 1},
   };
 
-  static Tile_Map maps[2][1] = {};
- 
-  maps[0][0].upper_left_coords = iv2m(0,0);
-  maps[0][0].tile_count = iv2m(17,9);
-  maps[0][0].tile_dim = iv2m(TILE_W,TILE_H);
-  maps[0][0].tiles = (u32*)tilemap00;
+  static u32 tilemap11[6][8] = {
+    {1, 1, 1, 0,  0, 1, 1, 1},
+    {1, 1, 1, 0,  0, 1, 1, 1},
+    {0, 0, 0, 0,  0, 0, 0, 1},
+    {1, 0, 0, 0,  0, 0, 0, 1},
+    {1, 0, 0, 0,  0, 0, 0, 1},
+    {1, 1, 1, 1,  1, 1, 1, 1},
+  };
 
-  maps[1][0] = maps[0][0];
-  maps[1][0].tiles = (u32*)tilemap01;
+  static u32 tilemap01[6][8] = {
+    {1, 1, 1, 0,  0, 1, 1, 1},
+    {1, 1, 0, 0,  0, 0, 1, 1},
+    {1, 0, 0, 0,  0, 0, 0, 0},
+    {1, 0, 0, 0,  0, 0, 0, 1},
+    {1, 1, 0, 0,  0, 0, 1, 1},
+    {1, 1, 1, 1,  1, 1, 1, 1},
+  };
+  static Tile_Map maps[2][2] = {};
 
   gs->world = (World) {
-    .tilemap_count = iv2m(2,1),
+    .tilemap_count = iv2m(2,2),
+    .tile_dim = iv2m(8,8),
+    .tile_count = iv2m(8,6),
     .maps = (Tile_Map*)maps,
   };
- 
+
+  maps[0][0].tiles = (u32*)tilemap00;
+  maps[0][1].tiles = (u32*)tilemap10;
+  maps[1][1].tiles = (u32*)tilemap11;
+  maps[1][0].tiles = (u32*)tilemap01;
+
+
+  // Initialize the player
+  gs->player_pos = v2m(5*TILE_W,3*TILE_H);
+  gs->player_dim = v2m(TILE_W*0.9,TILE_H*0.9);
+  gs->player_tilemap = iv2m(0,0);
 }
 
 void game_update(Game_State *gs, float dt) {
@@ -109,10 +181,12 @@ void game_render(Game_State *gs, float dt) {
   cmd = (R2D_Cmd){ .kind = R2D_CMD_KIND_SET_CAMERA, .c = (R2D_Cam){ .offset = v2m(0,0), .origin = v2m(0,0), .zoom = 10.0, .rot_deg = 0} };
   r2d_push_cmd(gs->frame_arena, &gs->cmd_list, cmd, 256);
 
+  Tile_Map *tm = get_tilemap(&gs->world, gs->player_tilemap);
+
   // Draw The backgound
-  for (u32 row = 0; row < 9; row+=1) {
-    for (u32 col = 0; col < 17; col+=1) {
-      if (is_tilemap_point_empty(&gs->world.maps[0], v2m(col*TILE_W, row*TILE_H))) {
+  for (u32 row = 0; row < 6; row+=1) {
+    for (u32 col = 0; col < 8; col+=1) {
+      if (is_tilemap_point_empty(&gs->world, tm, v2m(col, row))) {
         game_push_atlas_rect(gs, 69, rec(col*TILE_W, row*TILE_H,TILE_W,TILE_H));
       } else {
         game_push_atlas_rect(gs, 1, rec(col*TILE_W, row*TILE_H,TILE_W,TILE_H));
@@ -128,15 +202,32 @@ void game_render(Game_State *gs, float dt) {
   if (input_key_down(&gs->input, KEY_SCANCODE_LEFT))new_player_pos.x-=hero_speed*dt;
   if (input_key_down(&gs->input, KEY_SCANCODE_RIGHT))new_player_pos.x+=hero_speed*dt;
 
-  v2 left_player_tile = v2m(((new_player_pos.x - TILE_W/2)),(new_player_pos.y + TILE_H/2)); // truncation
-  v2 right_player_tile = v2m(((new_player_pos.x + TILE_W/2)),(new_player_pos.y + TILE_H/2)); // truncation
-                                                      
-  if (is_tilemap_point_empty(&gs->world.maps[0], left_player_tile) && is_tilemap_point_empty(&gs->world.maps[0], right_player_tile)) {
-    gs->player_pos = new_player_pos;
+
+  Raw_Position player_pos = {
+    .tilemap_coords = gs->player_tilemap,
+    .tile_coords = v2_divf(v2_add(new_player_pos, v2m(0, gs->player_dim.y/2)), TILE_W),
+  };
+  Raw_Position player_pos_left = player_pos;
+  player_pos_left.tile_coords.x -= (gs->player_dim.x/2) / TILE_W;
+  Raw_Position player_pos_right = player_pos;
+  player_pos_right.tile_coords.x += (gs->player_dim.x/2) / TILE_W;
+
+  if (is_world_point_empty(&gs->world, player_pos) && 
+      is_world_point_empty(&gs->world, player_pos_left) &&
+      is_world_point_empty(&gs->world, player_pos_right)) {
+    Canonical_Position cpos = get_canonical_position(&gs->world, player_pos);
+
+    gs->player_tilemap = cpos.tilemap_coords;
+
+    gs->player_pos = v2_multf(v2_add(cpos.tile_rel_coords, v2m(cpos.tile_coords.x, cpos.tile_coords.y)), TILE_W);
+    gs->player_pos.y -= gs->player_dim.y/2; // because our playerpos is in the center..
+    //gs->player_pos = new_player_pos;
   }
-  game_push_atlas_rect_at(gs, 9, gs->player_pos);
+  game_push_atlas_rect(gs, 9, rec(gs->player_pos.x - gs->player_dim.x/2, gs->player_pos.y - gs->player_dim.y/2, gs->player_dim.x, gs->player_dim.y));
 
 
+  // ..
+  // ..
   // In the end, perform a UI pass (TBA)
   gui_frame_begin(gs->screen_dim, &gs->input, &gs->cmd_list, dt);
   gui_set_next_bg_color(col(0.1, 0.2, 0.4, 0.5));
