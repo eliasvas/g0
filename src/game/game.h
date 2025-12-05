@@ -30,7 +30,8 @@ typedef struct {
 
 typedef struct {
   iv2 tilemap_count; // How many tilemaps are available
-  iv2 tile_dim; // How big each tile in the map is in px
+  iv2 tile_dim_meters; // How big each tile in the map is in meters 
+  iv2 tile_dim_px; // How big each tile in the map is in px
   iv2 tile_count; // how many tiles in each axis
 
   Tile_Map *maps;

@@ -1,7 +1,7 @@
 #ifndef COLOR_H__
 #define COLOR_H__
 #include "base/helper.h"
-#include "base/math3d.h"
+#include "base/bmath.h"
 
 // TODO: Color Spaces
 

@@ -2,6 +2,7 @@ PKGS="sdl3 glew"
 CFLAGS="-Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wswitch-enum \
   -pedantic -fno-exceptions -fstack-protector -g -fsanitize=address"
 CC="clang"
+#todo add: -nodefaultlibs -nostdlib -fno-builtin (SDL3 needs libc currently...)
 
 rm -rf build
 mkdir -p build
@@ -22,7 +23,7 @@ fi
 # Build the core (engine) executable
 $CC $CFLAGS -O0 -std=gnu23 `pkg-config --cflags $PKGS` -Lbuild \
 -Iext -Isrc src/base/*.c src/core/*.c -o build/prototype \
-`pkg-config --libs $PKGS` -lm 
+`pkg-config --libs $PKGS`
 
 if [ $? -eq 0 ]; then
     echo "✅ Core Build succeeded."

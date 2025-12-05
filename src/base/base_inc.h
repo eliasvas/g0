@@ -3,7 +3,7 @@
 
 #include "helper.h"
 #include "arena.h"
-#include "math3d.h"
+#include "bmath.h"
 #include "profiler.h"
 #include "hash.h"
 #include "color.h"

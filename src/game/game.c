@@ -7,6 +7,8 @@
 #define TILE_H 8
 
 
+//-------------------------------------
+// draw.h ??
 #define ATLAS_SPRITES_X 16
 #define ATLAS_SPRITES_Y 10
 void game_push_atlas_rect(Game_State *gs, u32 atlas_idx, rect r) {
@@ -26,12 +28,13 @@ void game_push_atlas_rect(Game_State *gs, u32 atlas_idx, rect r) {
 void game_push_atlas_rect_at(Game_State *gs, u32 atlas_idx, v2 pos) {
   game_push_atlas_rect(gs, atlas_idx, rec(pos.x-TILE_W/2,pos.y-TILE_H/2,TILE_W,TILE_H));
 }
+//-----------------------------------------------
 
 
 u32 get_tilemap_value_nocheck(World *world, Tile_Map *tm, iv2 tile_coords) {
   assert(tm);
-  assert((tile_coords.x >= 0) && (tile_coords.x < world->tile_dim.x) &&
-        (tile_coords.y >= 0) && (tile_coords.y < world->tile_dim.y));
+  assert((tile_coords.x >= 0) && (tile_coords.x < world->tile_dim_px.x) &&
+        (tile_coords.y >= 0) && (tile_coords.y < world->tile_dim_px.y));
 
   return tm->tiles[tile_coords.x + world->tile_count.x*tile_coords.y];
 }
@@ -57,8 +60,8 @@ b32 is_tilemap_point_empty(World *world, Tile_Map *tm, v2 test_point) {
 
 Tile_Map *get_tilemap(World *world, iv2 tilemap_idx) {
   Tile_Map *tm = nullptr;
-  if ((tilemap_idx.x >= 0) && (tilemap_idx.x < world->tile_dim.x) &&
-        (tilemap_idx.y >= 0) && (tilemap_idx.x < world->tile_dim.y)) {
+  if ((tilemap_idx.x >= 0) && (tilemap_idx.x < world->tile_dim_px.x) &&
+        (tilemap_idx.y >= 0) && (tilemap_idx.x < world->tile_dim_px.y)) {
     tm = &world->maps[tilemap_idx.x + world->tilemap_count.x * tilemap_idx.y];
   }
   return tm;
@@ -150,7 +153,7 @@ void game_init(Game_State *gs) {
 
   gs->world = (World) {
     .tilemap_count = iv2m(2,2),
-    .tile_dim = iv2m(8,8),
+    .tile_dim_px = iv2m(8,8),
     .tile_count = iv2m(8,6),
     .maps = (Tile_Map*)maps,
   };
